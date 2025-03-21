@@ -1,0 +1,56 @@
+﻿@page "/weather"
+@using Core.Model
+@using Core.Services
+@inject WeatherService WeatherService
+
+<h1>Weather Forecast</h1>
+
+<button @onclick="LoadWeather" disabled="@isLoading">
+    @(isLoading ? "Loading..." : "Get Weather")
+</button>
+
+@if (forecasts == null)
+{
+    <p>Click "Get Weather" to load data.</p>
+}
+else if (forecasts.Count == 0)
+{
+    <p>No data available.</p>
+}
+else
+{
+    <ul>
+        @foreach (var forecast in forecasts)
+        {
+            <li>
+                <strong>@forecast.Date</strong> - @forecast.Summary - Temp: @forecast.TemperatureC°C / @forecast.TemperatureF°F
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<WeatherForecast>? forecasts;
+    private bool isLoading = false;
+
+    private async Task LoadWeather()
+    {
+        if (isLoading || (forecasts != null && forecasts.Count > 0)) return;
+
+        System.Diagnostics.Debug.WriteLine("🟡 Button clicked, starting API request...");
+
+        isLoading = true;
+        try
+        {
+            forecasts = await WeatherService.GetWeatherAsync();
+            System.Diagnostics.Debug.WriteLine($"✅ Forecasts loaded: {forecasts.Count}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"❌ Error in LoadWeather(): {ex.Message}");
+        }
+
+        isLoading = false;
+        InvokeAsync(StateHasChanged);
+    }
+}
