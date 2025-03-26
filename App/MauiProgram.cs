@@ -17,61 +17,42 @@ namespace App
 
             builder.Services.AddMauiBlazorWebView();
 
-            // ✅ Use localhost instead of localhost for local connections
             string apiBaseUrl = DeviceInfo.Current.Platform == DevicePlatform.Android
-                ? "http://10.0.2.2:7234/"  // Android Emulator
-                : "https://localhost:7234/"; // Windows/macOS
+                ? "http://10.0.2.2:5082/"
+                : "https://localhost:7234/";
 
-            System.Diagnostics.Debug.WriteLine($"🌐 Using API Base URL: {apiBaseUrl}");
+            System.Diagnostics.Debug.WriteLine($"\uD83C\uDF10 Using API Base URL: {apiBaseUrl}");
 
-            // ✅ Register `HttpClient` globally (ensures `BaseAddress` is set)
-            builder.Services.AddSingleton(sp =>
-            {
-                var handler = new HttpClientHandler();
-                // Disable SSL validation for local development
-                handler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) =>
-                {
-                    // Accept any certificate
-                    return true;
-                };
-
-                var httpClient = new HttpClient(handler)
-                {
-                    BaseAddress = new Uri(apiBaseUrl),
-                    Timeout = TimeSpan.FromSeconds(10) // Set a reasonable timeout
-                };
-
-                System.Diagnostics.Debug.WriteLine($"✅ HttpClient BaseAddress: {httpClient.BaseAddress}");
-                return httpClient;
-            });
-
-            // ✅ Register `WeatherService` using the shared `HttpClient`
             builder.Services.AddHttpClient<WeatherService>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7234/");
+                client.BaseAddress = new Uri(apiBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(10);
+            })
+            .ConfigurePrimaryHttpMessageHandler(() =>
+            {
+                return new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                };
             });
-
-            // ✅ Check API Connection AFTER `HttpClient` is properly configured
-            var serviceProvider = builder.Services.BuildServiceProvider();
-            CheckApiConnection(serviceProvider);
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();
 #endif
 
-            return builder.Build();
+            var app = builder.Build();
+
+            Task.Run(() => CheckApiConnection(app.Services));
+
+            return app;
         }
 
         private static async void CheckApiConnection(IServiceProvider services)
         {
-            var httpClient = services.GetRequiredService<HttpClient>();
+            var weatherService = services.GetRequiredService<WeatherService>();
 
-            if (httpClient.BaseAddress == null)
-            {
-                System.Diagnostics.Debug.WriteLine("❌ HttpClient BaseAddress is NOT set! API calls will fail.");
-                return;
-            }
+            await Task.Delay(5000);
 
             int maxRetries = 5;
             int delayMs = 3000;
@@ -80,20 +61,20 @@ namespace App
             {
                 try
                 {
-                    var response = await httpClient.GetAsync("api/weather");
-                    if (response.IsSuccessStatusCode)
+                    var forecasts = await weatherService.GetWeatherAsync();
+                    if (forecasts.Count > 0)
                     {
                         System.Diagnostics.Debug.WriteLine("✅ API is accessible!");
                         return;
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"❌ API returned non-success status: {response.StatusCode}");
+                        System.Diagnostics.Debug.WriteLine("❌ API returned 0 items.");
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"❌ Attempt {i + 1} - API connection failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"❌ API connection failed: {ex.Message}");
                 }
 
                 await Task.Delay(delayMs);
