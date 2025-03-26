@@ -1,7 +1,7 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0-windowsservercore-ltsc2022 AS base
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 5082
+EXPOSE 7234
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0-windowsservercore-ltsc2022 AS build
 ARG BUILD_CONFIGURATION=Release
@@ -26,11 +26,10 @@ FROM base AS final
 WORKDIR /app
 
 COPY --from=build /app/publish/API ./API
-
+COPY API/appsettings.json ./API/appsettings.json
 COPY publish ./App
+COPY entrypoint.ps1 .
+COPY API/cert.pfx ./cert.pfx
 
-COPY entrypoint.ps1 /entrypoint.ps1
-
-SHELL ["pwsh", "-Command"]
-
-ENTRYPOINT ["pwsh", "-File", "/entrypoint.ps1"]
+SHELL ["powershell", "-Command"]
+ENTRYPOINT ["powershell", "-File", "entrypoint.ps1"]

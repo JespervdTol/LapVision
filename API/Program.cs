@@ -1,69 +1,50 @@
 ﻿using Core.Context;
 using Core.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(5082);
+builder.Configuration
+    .SetBasePath(Path.Combine(AppContext.BaseDirectory))
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-    var port = 7234;
-    var certPath = @"C:\Users\jespe\source\repos\LapVision\API\cert.pfx";
+if (builder.Configuration is IConfigurationRoot configRoot)
+{
+    foreach (var provider in configRoot.Providers)
+    {
+        Console.WriteLine($"📄 Config provider: {provider.GetType().Name}");
+    }
+}
+
+builder.WebHost.UseUrls();
+
+builder.WebHost.ConfigureKestrel((context, options) =>
+{
+    var config = context.Configuration;
+    var httpPort = config.GetValue("ASPNETCORE_HTTP_PORT", 5082);
+    var httpsPort = config.GetValue("ASPNETCORE_HTTPS_PORT", 7234);
+    var certPath = Path.Combine(AppContext.BaseDirectory, "cert.pfx");
     var certPassword = "jtol123@";
 
-    var directoryPath = @"C:\Users\jespe\source\repos\LapVision\";
+    Console.WriteLine($"🌐 Binding ports: HTTP={httpPort}, HTTPS={httpsPort}");
 
-    System.Diagnostics.Debug.WriteLine($"🔍 Checking parent directory: {directoryPath}");
-
-    if (Directory.Exists(directoryPath))
-    {
-        System.Diagnostics.Debug.WriteLine("✅ Parent directory exists. Listing contents...");
-        var directories = Directory.GetDirectories(directoryPath);
-        foreach (var dir in directories)
-        {
-            System.Diagnostics.Debug.WriteLine($"📁 Found directory: {dir}");
-        }
-    }
-    else
-    {
-        System.Diagnostics.Debug.WriteLine("❌ Parent directory does NOT exist. Something is blocking access.");
-    }
-
-    var files = Directory.GetFiles(directoryPath);
-    foreach (var file in files)
-    {
-        System.Diagnostics.Debug.WriteLine($"📄 Found file: {file}");
-    }
-
-    System.Diagnostics.Debug.WriteLine($"🔍 Checking certificate at: {certPath}");
+    options.ListenAnyIP(httpPort);
 
     if (File.Exists(certPath))
     {
-        System.Diagnostics.Debug.WriteLine("✅ File.Exists() returned TRUE. Cert should be accessible.");
-    }
-    else
-    {
-        System.Diagnostics.Debug.WriteLine("❌ File.Exists() returned FALSE. Cert is NOT found.");
-    }
-
-    if (File.Exists(certPath))
-    {
-        options.ListenAnyIP(port, listenOptions =>
+        Console.WriteLine("✅ Cert found! Enabling HTTPS.");
+        options.ListenAnyIP(httpsPort, listenOptions =>
         {
             listenOptions.UseHttps(certPath, certPassword);
         });
-        System.Diagnostics.Debug.WriteLine("✅ Cert found! Running with HTTPS.");
-    }
-    else
-    {
-        System.Diagnostics.Debug.WriteLine("⚠️ SSL Certificate not found. Running HTTPS without cert.");
-        options.ListenAnyIP(port);
     }
 });
 
 var configuration = builder.Configuration;
 var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+Console.WriteLine($"🧪 Connection string: {connectionString}");
 
 if (string.IsNullOrEmpty(connectionString))
 {
@@ -103,16 +84,16 @@ using (var scope = app.Services.CreateScope())
 
         if (dbContext.Database.CanConnect())
         {
-            System.Diagnostics.Debug.WriteLine("✅ Database-verbinding succesvol!");
+            Console.WriteLine("✅ Database-verbinding succesvol!");
         }
         else
         {
-            System.Diagnostics.Debug.WriteLine("❌ Database-verbinding mislukt! Controleer je instellingen.");
+            Console.WriteLine("❌ Database-verbinding mislukt! Controleer je instellingen.");
         }
     }
     catch (Exception ex)
     {
-        System.Diagnostics.Debug.WriteLine($"❌ Fout bij database-verbinding: {ex.Message}");
+        Console.WriteLine($"❌ Fout bij database-verbinding: {ex.Message}");
         throw;
     }
 }
