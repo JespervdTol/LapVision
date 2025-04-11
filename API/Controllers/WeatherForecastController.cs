@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Core.Model;
-using Core.Services;
 using Core.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,12 +9,10 @@ namespace API.Controllers
     [Route("api/weather")]
     public class WeatherForecastController : ControllerBase
     {
-        private readonly WeatherService _weatherService;
         private readonly DataContext _dbContext;
 
-        public WeatherForecastController(WeatherService weatherService, DataContext dbContext)
+        public WeatherForecastController(DataContext dbContext)
         {
-            _weatherService = weatherService;
             _dbContext = dbContext;
         }
 
@@ -28,18 +25,18 @@ namespace API.Controllers
             {
                 var forecasts = await _dbContext.WeatherForecasts.ToListAsync();
 
-                if (forecasts == null || !forecasts.Any())
+                if (forecasts == null || forecasts.Count == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine("❌ No weather data returned.");
+                    System.Diagnostics.Debug.WriteLine("❌ No weather data found.");
                     return NotFound("No weather data available.");
                 }
 
-                System.Diagnostics.Debug.WriteLine($"✅ Weather data found: {forecasts.Count} items.");
+                System.Diagnostics.Debug.WriteLine($"✅ Weather data returned: {forecasts.Count} items.");
                 return Ok(forecasts);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Error in GetWeatherAsync: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ Error in GET /api/weather: {ex.Message}");
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }

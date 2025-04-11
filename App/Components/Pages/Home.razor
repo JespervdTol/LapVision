@@ -1,5 +1,111 @@
-﻿@page "/"
+﻿@page "/home"
+@using System.Text.Json;
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <h1>Hello, world!</h1>
 
-Welcome to your new app.
+@if (string.IsNullOrEmpty(Username))
+{
+    <p>Welcome to your new app.</p>
+}
+else
+{
+    <p>👋 Welcome back, <strong>@Username</strong>!</p>
+    <p>🔐 You're logged in as: <strong>@UserRole</strong></p>
+
+    <button class="btn btn-danger mt-2" @onclick="Logout">Logout</button>
+}
+
+@code {
+    private string? Username;
+    private string? UserRole;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+        if (string.IsNullOrEmpty(token))
+            token = await JS.InvokeAsync<string>("sessionStorage.getItem", "token");
+
+        if (string.IsNullOrEmpty(token) || IsTokenExpired(token))
+        {
+            Navigation.NavigateTo("/", true);
+            return;
+        }
+
+        var payload = ParseJwtPayload(token);
+        if (payload != null)
+        {
+            payload.TryGetValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", out var email);
+            payload.TryGetValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", out var role);
+
+            Username = email.ValueKind != JsonValueKind.Undefined ? email.GetString() : null;
+            UserRole = role.ValueKind != JsonValueKind.Undefined ? role.GetString() : null;
+        }
+    }
+
+    private async Task Logout()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "token");
+        await JS.InvokeVoidAsync("sessionStorage.removeItem", "token");
+
+        Username = null;
+        UserRole = null;
+
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+
+    private bool IsTokenExpired(string jwt)
+    {
+        try
+        {
+            var parts = jwt.Split('.');
+            if (parts.Length != 3)
+                return true;
+
+            var payload = parts[1];
+            payload += new string('=', (4 - payload.Length % 4) % 4);
+            var bytes = Convert.FromBase64String(payload);
+            var json = System.Text.Encoding.UTF8.GetString(bytes);
+            var payloadDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(json);
+
+            if (payloadDict != null && payloadDict.TryGetValue("exp", out var expElement))
+            {
+                long unixExp = expElement.GetInt64();
+                var expiration = DateTimeOffset.FromUnixTimeSeconds(unixExp).UtcDateTime;
+
+                System.Diagnostics.Debug.WriteLine($"🔍 Token expiration: {expiration}");
+                System.Diagnostics.Debug.WriteLine($"⏰ Current time: {DateTime.UtcNow}");
+
+                return DateTime.UtcNow > expiration;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"❌ Failed to parse token: {ex.Message}");
+            return true;
+        }
+    }
+
+    private Dictionary<string, System.Text.Json.JsonElement>? ParseJwtPayload(string jwt)
+    {
+        try
+        {
+            var parts = jwt.Split('.');
+            if (parts.Length != 3) return null;
+
+            var payloadJson = parts[1];
+            payloadJson += new string('=', (4 - payloadJson.Length % 4) % 4);
+
+            var bytes = Convert.FromBase64String(payloadJson);
+            var json = System.Text.Encoding.UTF8.GetString(bytes);
+            return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(json);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}

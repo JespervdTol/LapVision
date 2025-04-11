@@ -1,9 +1,6 @@
 ﻿using Core.Model;
-using System;
-using System.Collections.Generic;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace Core.Services
 {
@@ -13,34 +10,30 @@ namespace Core.Services
 
         public WeatherService(HttpClient httpClient)
         {
-            if (httpClient == null)
-                throw new ArgumentNullException(nameof(httpClient), "HttpClient is null!");
-
-            _httpClient = httpClient;
-
-            System.Diagnostics.Debug.WriteLine($"🌍 WeatherService HttpClient BaseAddress: {_httpClient.BaseAddress}");
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient), "HttpClient is null!");
 
             if (_httpClient.BaseAddress == null)
-                throw new InvalidOperationException("❌ HttpClient BaseAddress is NOT set! API calls will fail.");
+                throw new InvalidOperationException("❌ HttpClient BaseAddress is NOT set!");
 
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "HttpClient");
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
+
+            System.Diagnostics.Debug.WriteLine($"🌍 WeatherService HttpClient BaseAddress: {_httpClient.BaseAddress}");
         }
 
         public async Task<List<WeatherForecast>> GetWeatherAsync()
         {
+            System.Diagnostics.Debug.WriteLine("🔄 Fetching weather data from API...");
+
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔄 Fetching weather data from API...");
-
                 var response = await _httpClient.GetAsync("api/weather");
-
                 System.Diagnostics.Debug.WriteLine($"📡 Response Status Code: {response.StatusCode}");
 
                 if (!response.IsSuccessStatusCode)
                 {
                     System.Diagnostics.Debug.WriteLine($"❌ Failed to get weather data. Status: {response.StatusCode}");
-                    return new List<WeatherForecast>();
+                    return new();
                 }
 
                 var raw = await response.Content.ReadAsStringAsync();
@@ -54,7 +47,7 @@ namespace Core.Services
                 if (data == null || data.Count == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("❌ No weather data found or empty list returned.");
-                    return new List<WeatherForecast>();
+                    return new();
                 }
 
                 System.Diagnostics.Debug.WriteLine($"✅ Successfully received {data.Count} forecasts.");
@@ -63,7 +56,7 @@ namespace Core.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ API request error: {ex.Message}");
-                return new List<WeatherForecast>();
+                return new();
             }
         }
     }

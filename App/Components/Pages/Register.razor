@@ -1,0 +1,77 @@
+﻿@namespace App.Pages
+@page "/register"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="register-container">
+    <div class="register-title">Create Account</div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger">@ErrorMessage</div>
+    }
+
+    <EditForm Model="registerModel" OnValidSubmit="HandleRegister" class="register-form">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <InputText class="form-control" @bind-Value="registerModel.Email" placeholder="Email" />
+        <InputText class="form-control" @bind-Value="registerModel.Username" placeholder="Username" />
+        <InputText class="form-control" @bind-Value="registerModel.Password" type="password" placeholder="Password" />
+
+        <label class="mb-1">Role:</label>
+        <InputSelect class="form-control" @bind-Value="registerModel.Role">
+            <option value="Driver">Driver</option>
+            <option value="Coach">Coach</option>
+        </InputSelect>
+
+        <button class="btn btn-register mt-3" type="submit">Register</button>
+    </EditForm>
+
+    <div class="register-footer">
+        Already have an account? <a href="/">Login here</a>
+    </div>
+</div>
+
+@code {
+    private RegisterModel registerModel = new();
+    private string? ErrorMessage;
+
+    public class RegisterModel
+    {
+        public string Email { get; set; } = "";
+        public string Username { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string Role { get; set; } = "Driver";
+    }
+
+    private async Task HandleRegister()
+    {
+        ErrorMessage = null;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/auth/register", registerModel);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+                await JS.InvokeVoidAsync("localStorage.setItem", "token", result?.Token);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                ErrorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    public class AuthResponse
+    {
+        public string Token { get; set; } = "";
+    }
+}

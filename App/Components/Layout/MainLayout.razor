@@ -1,17 +1,63 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+
+@if (!IsLoginOrRegisterPage)
+{
+    <header class="top-nav">
+        <img src="images/logo_side.png" alt="LapVision Logo" />
+    </header>
+}
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
+    <main class="main-content">
         <article class="content px-4">
             @Body
         </article>
     </main>
+
+    @if (!IsLoginOrRegisterPage)
+    {
+        <div class="bottom-nav">
+            <NavLink href="home" class="bottom-icon" Match="NavLinkMatch.All">
+                <i class="bi bi-house-door-fill"></i>
+                <span>Home</span>
+            </NavLink>
+            <NavLink href="sessions" class="bottom-icon">
+                <i class="bi bi-speedometer2"></i>
+                <span>Sessions</span>
+            </NavLink>
+            <NavLink href="club" class="bottom-icon">
+                <i class="bi bi-people-fill"></i>
+                <span>Club</span>
+            </NavLink>
+            <NavLink href="profile" class="bottom-icon">
+                <i class="bi bi-person-circle"></i>
+                <span>Profile</span>
+            </NavLink>
+        </div>
+    }
 </div>
+
+<style>
+    .top-nav {
+        text-align: center;
+        border-bottom: 3px solid red;
+        padding: 10px 20px;
+        background-color: #f4f4f4;
+    }
+
+    .top-nav img {
+        max-width: 65%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+    }
+</style>
+
+@code {
+    private bool IsLoginOrRegisterPage =>
+        NavigationManager.Uri.EndsWith("/") ||
+        NavigationManager.Uri.Contains("/register");
+}

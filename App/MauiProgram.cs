@@ -8,6 +8,7 @@ namespace App
         public static MauiApp CreateMauiApp()
         {
             var builder = MauiApp.CreateBuilder();
+
             builder
                 .UseMauiApp<App>()
                 .ConfigureFonts(fonts =>
@@ -20,8 +21,6 @@ namespace App
             string apiBaseUrl = DeviceInfo.Current.Platform == DevicePlatform.Android
                 ? "http://10.0.2.2:5082/"
                 : "https://localhost:7234/";
-
-            System.Diagnostics.Debug.WriteLine($"\uD83C\uDF10 Using API Base URL: {apiBaseUrl}");
 
             builder.Services.AddHttpClient<WeatherService>(client =>
             {
@@ -36,51 +35,18 @@ namespace App
                 };
             });
 
+            builder.Services.AddScoped(sp => new HttpClient
+            {
+                BaseAddress = new Uri(apiBaseUrl),
+                Timeout = TimeSpan.FromSeconds(10)
+            });
+
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();
 #endif
 
-            var app = builder.Build();
-
-            Task.Run(() => CheckApiConnection(app.Services));
-
-            return app;
-        }
-
-        private static async void CheckApiConnection(IServiceProvider services)
-        {
-            var weatherService = services.GetRequiredService<WeatherService>();
-
-            await Task.Delay(5000);
-
-            int maxRetries = 5;
-            int delayMs = 3000;
-
-            for (int i = 0; i < maxRetries; i++)
-            {
-                try
-                {
-                    var forecasts = await weatherService.GetWeatherAsync();
-                    if (forecasts.Count > 0)
-                    {
-                        System.Diagnostics.Debug.WriteLine("✅ API is accessible!");
-                        return;
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("❌ API returned 0 items.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"❌ API connection failed: {ex.Message}");
-                }
-
-                await Task.Delay(delayMs);
-            }
-
-            System.Diagnostics.Debug.WriteLine("❌ API is not accessible after multiple attempts!");
+            return builder.Build();
         }
     }
 }
