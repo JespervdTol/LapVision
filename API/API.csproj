@@ -29,6 +29,8 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\Core\Core.csproj" />
+		<ProjectReference Include="..\TContracts\TContracts.csproj" />
+		<ProjectReference Include="..\TInfrastructure\TInfrastructure.csproj" />
 	</ItemGroup>
 
 </Project>

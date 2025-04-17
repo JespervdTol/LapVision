@@ -1,6 +1,6 @@
-﻿using Core.Context;
+﻿using TInfrastructure.Context;
 using Core.Model;
-using Core.Services;
+using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;

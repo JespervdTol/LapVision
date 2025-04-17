@@ -2,7 +2,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace Core.Services
+namespace API.Services
 {
     public class WeatherService
     {

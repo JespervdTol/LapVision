@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using TContracts.DTO.Auth
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -45,17 +46,11 @@
 }
 
 @code {
-    private LoginModel loginModel = new();
+    private LoginRequest loginModel = new();
     private string? ErrorMessage;
     private bool RememberMe = false;
     private bool isTokenExpired = false;
     private bool isCheckingToken = true;
-
-    public class LoginModel
-    {
-        public string Identifier { get; set; } = "";
-        public string Password { get; set; } = "";
-    }
 
     public class AuthResponse
     {

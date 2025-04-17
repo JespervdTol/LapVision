@@ -66,10 +66,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Core\Core.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
 	  <MauiImage Include="wwwroot\images\logo.svg" />
 	</ItemGroup>
 
@@ -79,6 +75,10 @@
 
 	<ItemGroup>
 	  <Folder Include="Resources\Images\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\TContracts\TContracts.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
-﻿using Core.Services;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Maui.Devices; // For DeviceInfo
 
 namespace App
 {
@@ -18,22 +18,23 @@ namespace App
 
             builder.Services.AddMauiBlazorWebView();
 
-            string apiBaseUrl = DeviceInfo.Current.Platform == DevicePlatform.Android
-                ? "http://10.0.2.2:5082/"
-                : "https://localhost:7234/";
+            string apiBaseUrl;
 
-            builder.Services.AddHttpClient<WeatherService>(client =>
+            if (DeviceInfo.Current.Platform == DevicePlatform.Android)
             {
-                client.BaseAddress = new Uri(apiBaseUrl);
-                client.Timeout = TimeSpan.FromSeconds(10);
-            })
-            .ConfigurePrimaryHttpMessageHandler(() =>
-            {
-                return new HttpClientHandler
+                if (DeviceInfo.DeviceType == DeviceType.Virtual)
                 {
-                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-                };
-            });
+                    apiBaseUrl = "http://10.0.2.2:5082/";
+                }
+                else
+                {
+                    apiBaseUrl = "http://192.168.2.9:5082/";
+                }
+            }
+            else
+            {
+                apiBaseUrl = "https://localhost:7234/";
+            }
 
             builder.Services.AddScoped(sp => new HttpClient
             {

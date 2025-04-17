@@ -1,4 +1,5 @@
 ﻿@namespace App.Pages
+@using TContracts.DTO.Auth
 @page "/register"
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -35,16 +36,8 @@
 </div>
 
 @code {
-    private RegisterModel registerModel = new();
+    private RegisterRequest registerModel = new();
     private string? ErrorMessage;
-
-    public class RegisterModel
-    {
-        public string Email { get; set; } = "";
-        public string Username { get; set; } = "";
-        public string Password { get; set; } = "";
-        public string Role { get; set; } = "Driver";
-    }
 
     private async Task HandleRegister()
     {

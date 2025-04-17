@@ -1,6 +1,6 @@
 ﻿using Core.Model;
 
-namespace API.DTO.Auth
+namespace TContracts.DTO.Auth
 {
     public class RegisterRequest
     {

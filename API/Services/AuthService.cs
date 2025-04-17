@@ -1,4 +1,4 @@
-﻿using Core.Context;
+﻿using TInfrastructure.Context;
 using Core.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -7,7 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace Core.Services
+namespace API.Services
 {
     public class AuthService
     {
