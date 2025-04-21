@@ -9,6 +9,8 @@ LapVision/
 ├── API/                       - Web API (Controllers, Application Services)
 │   ├── Controllers/           - Entry point for HTTP requests
 │   ├── Services/              - Application logic (AuthService, LapTimeService, etc.)
+│   ├── Helpers/
+│   │   └── Mappers/           - Static mapping logic (DTO ↔ Entity, Enums)
 │   └── Program.cs             - API configuration and DI setup
 │
 ├── App/                       - MAUI Blazor Hybrid Client (Mobile App)
@@ -114,6 +116,7 @@ App calls API via HTTP, sends and receives DTOs. API maps to domain models and a
 - ❌ App referencing `Model`
 - ❌ Contracts referencing `Model` or entities
 - ❌ API exposing domain entities directly
+- ❌ Business logic inside controllers
 - ❌ Domain services accessing EF Core or configuration
 
 ---
