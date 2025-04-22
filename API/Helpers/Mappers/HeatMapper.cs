@@ -25,9 +25,8 @@ namespace API.Helpers.Mappers
             {
                 HeatID = heat.HeatID,
                 HeatNumber = heat.HeatNumber,
-                LapTimes = heat.LapTimes?
-                    .Select(lt => lt.ToDTO())
-                    .ToList() ?? new List<LapTimeDTO>()
+                CircuitID = heat.Session.CircuitID,
+                LapTimes = heat.LapTimes.Select(l => l.ToDTO()).ToList()
             };
         }
     }

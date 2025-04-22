@@ -1,0 +1,52 @@
+﻿@import url('./root.css');
+
+.lap-title {
+    color: var(--primary-red);
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.lap-info-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 2rem;
+    background-color: var(--input-background);
+    color: var(--text-light);
+    border-radius: 0.75rem;
+    max-width: 1000px;
+    margin: 0 auto 1rem auto;
+    flex-wrap: wrap;
+}
+
+.lap-info-box {
+    flex: 1;
+    min-width: 200px;
+}
+
+.text-end {
+    text-align: right;
+}
+
+.canvas-container {
+    background-color: var(--background-dark);
+    padding: 1rem;
+    border-radius: 1rem;
+    box-shadow: 0 0 12px var(--box-shadow-dark);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 100%;
+    margin: 1rem auto;
+}
+
+canvas {
+    width: 100%;
+    height: auto;
+    max-width: 800px;
+    aspect-ratio: 4 / 3;
+    background-color: #111;
+    border: 2px solid var(--primary-red);
+    border-radius: 0.5rem;
+}

@@ -51,12 +51,12 @@ else
             }
             else
             {
-                Console.WriteLine($"⚠️ Failed to load session: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"⚠️ Failed to load session: {response.StatusCode}");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error loading session details: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"❌ Error loading session details: {ex.Message}");
         }
     }
 

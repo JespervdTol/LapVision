@@ -1,25 +1,31 @@
 ﻿@page "/home"
-@using System.Text.Json;
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject HttpClient Http
+@using System.Text.Json
+@using System.Net.Http.Headers
+@using Contracts.DTO.GPS
 
-<h1>Hello, world!</h1>
+<link href="css/home.css" rel="stylesheet" />
 
-@if (string.IsNullOrEmpty(Username))
-{
-    <p>Welcome to your new app.</p>
-}
-else
-{
-    <p>👋 Welcome back, <strong>@Username</strong>!</p>
-    <p>🔐 You're logged in as: <strong>@UserRole</strong></p>
+<div class="home-container">
+    <h1>Welcome back, @Username!</h1>
+    <p class="home-sub">You're logged in as <strong>@UserRole</strong></p>
 
-    <button class="btn btn-danger mt-2" @onclick="Logout">Logout</button>
-}
+    <button class="btn-start-session" @onclick="StartSession">Start Session</button>
+
+    <button class="logout-button" @onclick="Logout">Logout</button>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="alert alert-danger mt-3">@ErrorMessage</div>
+    }
+</div>
 
 @code {
     private string? Username;
     private string? UserRole;
+    private string? ErrorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -44,6 +50,43 @@ else
         }
     }
 
+    private async Task LogToken()
+    {
+        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token")
+                   ?? await JS.InvokeAsync<string>("sessionStorage.getItem", "token");
+
+        System.Diagnostics.Debug.WriteLine($"🪪 JWT Token: {token}");
+    }
+
+    private async Task StartSession()
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/gps/start-session");
+
+            var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var session = await response.Content.ReadFromJsonAsync<StartSessionResponse>();
+                Navigation.NavigateTo($"/track?sessionId={session?.SessionID}&heatId={session?.HeatID}");
+            }
+            else
+            {
+                ErrorMessage = "Failed to start session.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error: {ex.Message}";
+        }
+    }
+
     private async Task Logout()
     {
         await JS.InvokeVoidAsync("localStorage.removeItem", "token");
@@ -60,48 +103,41 @@ else
         try
         {
             var parts = jwt.Split('.');
-            if (parts.Length != 3)
-                return true;
+            if (parts.Length != 3) return true;
 
             var payload = parts[1];
             payload += new string('=', (4 - payload.Length % 4) % 4);
             var bytes = Convert.FromBase64String(payload);
             var json = System.Text.Encoding.UTF8.GetString(bytes);
-            var payloadDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(json);
+            var payloadDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
 
             if (payloadDict != null && payloadDict.TryGetValue("exp", out var expElement))
             {
                 long unixExp = expElement.GetInt64();
                 var expiration = DateTimeOffset.FromUnixTimeSeconds(unixExp).UtcDateTime;
-
-                System.Diagnostics.Debug.WriteLine($"🔍 Token expiration: {expiration}");
-                System.Diagnostics.Debug.WriteLine($"⏰ Current time: {DateTime.UtcNow}");
-
                 return DateTime.UtcNow > expiration;
             }
 
             return true;
         }
-        catch (Exception ex)
+        catch
         {
-            System.Diagnostics.Debug.WriteLine($"❌ Failed to parse token: {ex.Message}");
             return true;
         }
     }
 
-    private Dictionary<string, System.Text.Json.JsonElement>? ParseJwtPayload(string jwt)
+    private Dictionary<string, JsonElement>? ParseJwtPayload(string jwt)
     {
         try
         {
             var parts = jwt.Split('.');
             if (parts.Length != 3) return null;
 
-            var payloadJson = parts[1];
-            payloadJson += new string('=', (4 - payloadJson.Length % 4) % 4);
-
-            var bytes = Convert.FromBase64String(payloadJson);
+            var payload = parts[1];
+            payload += new string('=', (4 - payload.Length % 4) % 4);
+            var bytes = Convert.FromBase64String(payload);
             var json = System.Text.Encoding.UTF8.GetString(bytes);
-            return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(json);
+            return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
         }
         catch
         {

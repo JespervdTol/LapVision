@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using API.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Contracts.DTO.LapTime;
 
 namespace API.Controllers
 {
@@ -58,6 +59,14 @@ namespace API.Controllers
             var accountId = GetAccountId();
             var heat = await _sessionService.GetHeatByIdAsync(heatId, accountId);
             return heat == null ? NotFound() : Ok(heat);
+        }
+
+        [HttpGet("circuit/{circuitId}/laps")]
+        public async Task<ActionResult<List<LapTimeDTO>>> GetLapsForCircuit(int circuitId)
+        {
+            var accountId = GetAccountId();
+            var laps = await _sessionService.GetAllLapsForCircuitAsync(circuitId, accountId);
+            return Ok(laps);
         }
     }
 }

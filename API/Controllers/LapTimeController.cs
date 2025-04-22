@@ -1,6 +1,7 @@
 ﻿using Contracts.DTO.LapTime;
 using Microsoft.AspNetCore.Mvc;
 using API.Services;
+using System.Security.Claims;
 
 namespace API.Controllers
 {
@@ -33,6 +34,17 @@ namespace API.Controllers
                 return NotFound();
 
             return NoContent();
+        }
+
+        [HttpGet("{lapTimeId}/map")]
+        public async Task<ActionResult<LapMapDTO>> GetLapMap(int lapTimeId)
+        {
+            var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(idStr, out int accountId) || accountId <= 0)
+                return Unauthorized();
+
+            var map = await _lapTimeService.GetLapMapAsync(lapTimeId, accountId);
+            return map == null ? NotFound() : Ok(map);
         }
     }
 }

@@ -1,0 +1,96 @@
+﻿@page "/lapmap/{LapTimeID:int}"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using Contracts.DTO.GPS
+@using Contracts.DTO.LapTime
+@using Contracts.DTO.Circuit
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+
+<h3 class="lap-title">📍 Lap Map</h3>
+
+<div class="lap-info-grid">
+    <div class="lap-info-box">
+        <p><strong>Session:</strong> 5°C - Dry</p>
+    </div>
+    <div class="lap-info-box text-end">
+        <p><strong>Fastest Lap:</strong> 42.5s</p>
+        <p><strong>Average:</strong> 44.5s</p>
+    </div>
+</div>
+
+<div class="canvas-container">
+    <canvas id="lapCanvas"></canvas>
+</div>
+
+<p class="map-note text-center">W.I.P.</p>
+
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+        <div class="alert alert-danger mt-3">@ErrorMessage</div>
+}
+
+@code {
+    [Parameter] public int LapTimeID { get; set; }
+
+    private List<GPSPointDTO> gpsPoints = new();
+    private List<MiniSectorDTO> miniSectors = new();
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"api/laptime/{LapTimeID}/map");
+            await AttachJwtAsync(request);
+
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await response.Content.ReadFromJsonAsync<LapMapDTO>();
+                if (data != null && data.GPSPoints.Any())
+                {
+                    gpsPoints = data.GPSPoints;
+                    miniSectors = data.MiniSectors;
+                    Normalize();
+                    await JS.InvokeVoidAsync("renderLap", gpsPoints, miniSectors);
+                }
+                else
+                {
+                    ErrorMessage = "❌ No GPS data found for this lap.";
+                }
+            }
+            else
+            {
+                ErrorMessage = $"❌ Failed to load lap map: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"❌ Exception: {ex.Message}";
+        }
+    }
+
+    private async Task AttachJwtAsync(HttpRequestMessage request)
+    {
+        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+        if (!string.IsNullOrEmpty(token))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+
+    private void Normalize()
+    {
+        var minLat = gpsPoints.Min(p => p.Latitude);
+        var maxLat = gpsPoints.Max(p => p.Latitude);
+        var minLng = gpsPoints.Min(p => p.Longitude);
+        var maxLng = gpsPoints.Max(p => p.Longitude);
+
+        foreach (var point in gpsPoints)
+        {
+            point.Latitude = (point.Latitude - minLat) / (maxLat - minLat + 1e-6);
+            point.Longitude = (point.Longitude - minLng) / (maxLng - minLng + 1e-6);
+        }
+    }
+}

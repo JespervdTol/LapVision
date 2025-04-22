@@ -13,5 +13,9 @@ namespace Model.Entities
 
         [MaxLength(255)]
         public string Location { get; set; }
+
+        public double StartLineLat { get; set; }
+        public double StartLineLng { get; set; }
+        public double RadiusMeters { get; set; } = 10;
     }
 }

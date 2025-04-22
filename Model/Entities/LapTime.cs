@@ -36,5 +36,8 @@ namespace Model.Entities
 
             return null;
         }
+
+        public ICollection<MiniSector> MiniSectors { get; set; } = new List<MiniSector>();
+        public ICollection<GPSPoint> GPSPoints { get; set; } = new List<GPSPoint>();
     }
 }

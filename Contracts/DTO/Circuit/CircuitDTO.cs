@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Contracts.DTO.Circuit
 {
@@ -10,5 +6,9 @@ namespace Contracts.DTO.Circuit
     {
         public int CircuitID { get; set; }
         public string Name { get; set; }
+        public string? Location { get; set; }
+        public double StartLineLat { get; set; }
+        public double StartLineLng { get; set; }
+        public double RadiusMeters { get; set; }
     }
 }

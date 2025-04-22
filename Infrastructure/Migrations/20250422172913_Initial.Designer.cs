@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Infrastructure.Persistence.Migrations
+namespace Infrastructure.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250421185107_AddAccountToSession")]
-    partial class AddAccountToSession
+    [Migration("20250422172913_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -76,9 +76,51 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<double>("RadiusMeters")
+                        .HasColumnType("double");
+
+                    b.Property<double>("StartLineLat")
+                        .HasColumnType("double");
+
+                    b.Property<double>("StartLineLng")
+                        .HasColumnType("double");
+
                     b.HasKey("CircuitID");
 
                     b.ToTable("Circuit", (string)null);
+                });
+
+            modelBuilder.Entity("Model.Entities.GPSPoint", b =>
+                {
+                    b.Property<int>("GPSPointID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("GPSPointID"));
+
+                    b.Property<TimeSpan?>("DeltaToBest")
+                        .HasColumnType("time(6)");
+
+                    b.Property<int>("LapTimeID")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("MiniSectorNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("GPSPointID");
+
+                    b.HasIndex("LapTimeID");
+
+                    b.ToTable("GPSPoints");
                 });
 
             modelBuilder.Entity("Model.Entities.Heat", b =>
@@ -130,6 +172,39 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("HeatID");
 
                     b.ToTable("LapTime", (string)null);
+                });
+
+            modelBuilder.Entity("Model.Entities.MiniSector", b =>
+                {
+                    b.Property<int>("MiniSectorID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("MiniSectorID"));
+
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool?>("IsFasterThanBest")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool?>("IsFasterThanPrevious")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("LapTimeID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SectorNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("MiniSectorID");
+
+                    b.HasIndex("LapTimeID");
+
+                    b.ToTable("MiniSectors");
                 });
 
             modelBuilder.Entity("Model.Entities.Person", b =>
@@ -221,6 +296,17 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasDiscriminator().HasValue("Driver");
                 });
 
+            modelBuilder.Entity("Model.Entities.GPSPoint", b =>
+                {
+                    b.HasOne("Model.Entities.LapTime", "LapTime")
+                        .WithMany("GPSPoints")
+                        .HasForeignKey("LapTimeID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LapTime");
+                });
+
             modelBuilder.Entity("Model.Entities.Heat", b =>
                 {
                     b.HasOne("Model.Entities.Session", "Session")
@@ -241,6 +327,17 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Heat");
+                });
+
+            modelBuilder.Entity("Model.Entities.MiniSector", b =>
+                {
+                    b.HasOne("Model.Entities.LapTime", "LapTime")
+                        .WithMany("MiniSectors")
+                        .HasForeignKey("LapTimeID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LapTime");
                 });
 
             modelBuilder.Entity("Model.Entities.Person", b =>
@@ -282,6 +379,13 @@ namespace Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Model.Entities.Heat", b =>
                 {
                     b.Navigation("LapTimes");
+                });
+
+            modelBuilder.Entity("Model.Entities.LapTime", b =>
+                {
+                    b.Navigation("GPSPoints");
+
+                    b.Navigation("MiniSectors");
                 });
 
             modelBuilder.Entity("Model.Entities.Session", b =>

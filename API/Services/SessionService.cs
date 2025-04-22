@@ -4,6 +4,8 @@ using Contracts.DTO.Heat;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Model.Entities;
+using Contracts.DTO.GPS;
+using Contracts.DTO.LapTime;
 
 namespace API.Services
 {
@@ -56,6 +58,40 @@ namespace API.Services
                 .FirstOrDefaultAsync(h => h.HeatID == heatId && h.Session.AccountID == accountId);
 
             return heat?.ToDetailDTO();
+        }
+
+        public async Task<StartSessionResponse> CreateGpsSessionAsync(int accountId)
+        {
+            var session = new Session
+            {
+                CircuitID = 1, // Placeholder — GPS selection to come later
+                CreatedAt = DateTime.UtcNow,
+                AccountID = accountId
+            };
+
+            session.GenerateHeats(1); // always generate 1 heat initially
+
+            _context.Sessions.Add(session);
+            await _context.SaveChangesAsync();
+
+            return new StartSessionResponse
+            {
+                SessionID = session.SessionID,
+                HeatID = session.Heats.First().HeatID
+            };
+        }
+
+        public async Task<List<LapTimeDTO>> GetAllLapsForCircuitAsync(int circuitId, int accountId)
+        {
+            var laps = await _context.LapTimes
+                .Include(l => l.MiniSectors)
+                .Include(l => l.GPSPoints)
+                .Include(l => l.Heat)
+                    .ThenInclude(h => h.Session)
+                .Where(l => l.Heat.Session.CircuitID == circuitId && l.Heat.Session.AccountID == accountId)
+                .ToListAsync();
+
+            return laps.Select(l => l.ToDTO()).ToList();
         }
     }
 }

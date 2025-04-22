@@ -6,6 +6,7 @@ namespace Contracts.DTO.Heat
     {
         public int HeatID { get; set; }
         public int HeatNumber { get; set; }
+        public int CircuitID { get; set; }
         public List<LapTimeDTO> LapTimes { get; set; }
     }
 }

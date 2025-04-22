@@ -16,6 +16,8 @@ namespace Infrastructure.Persistence
         public DbSet<Session> Sessions { get; set; }
         public DbSet<Heat> Heats { get; set; }
         public DbSet<LapTime> LapTimes { get; set; }
+        public DbSet<MiniSector> MiniSectors { get; set; }
+        public DbSet<GPSPoint> GPSPoints { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -90,6 +92,18 @@ namespace Infrastructure.Persistence
                 .HasMany(h => h.LapTimes)
                 .WithOne(lt => lt.Heat)
                 .HasForeignKey(lt => lt.HeatID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<MiniSector>()
+                .HasOne(ms => ms.LapTime)
+                .WithMany(lt => lt.MiniSectors)
+                .HasForeignKey(ms => ms.LapTimeID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<GPSPoint>()
+                .HasOne(g => g.LapTime)
+                .WithMany(lt => lt.GPSPoints)
+                .HasForeignKey(g => g.LapTimeID)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

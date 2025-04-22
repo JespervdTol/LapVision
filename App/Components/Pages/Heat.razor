@@ -24,6 +24,7 @@ else
                 <th>Total Time</th>
                 <th>Start</th>
                 <th>End</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -34,6 +35,9 @@ else
                     <td>@FormatTime(lap.TotalTime)</td>
                     <td>@lap.StartTime?.ToLocalTime().ToString("T")</td>
                     <td>@lap.EndTime?.ToLocalTime().ToString("T")</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-info" href="/lapmap/@lap.LapTimeID">View Lap Map</a>
+                    </td>
                 </tr>
             }
         </tbody>
@@ -46,6 +50,11 @@ else
     </div>
 }
 
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <div class="alert alert-danger mt-3">@ErrorMessage</div>
+}
+
 @code {
     [Parameter]
     public int HeatID { get; set; }
@@ -53,6 +62,7 @@ else
     private HeatDetailDTO? heat;
     private CreateLapTimeRequest newLap = new();
     private string? rawLapTime;
+    private string? ErrorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -68,7 +78,7 @@ else
         }
         else
         {
-            Console.WriteLine($"⚠️ Failed to load heat: {response.StatusCode}");
+            ErrorMessage = $"⚠️ Failed to load heat: {response.StatusCode}";
         }
     }
 
@@ -79,15 +89,14 @@ else
             newLap.TotalTime = parsed;
 
             var request = new HttpRequestMessage(HttpMethod.Post, "api/laptime")
-                {
-                    Content = JsonContent.Create(newLap)
-                };
+            {
+                Content = JsonContent.Create(newLap)
+            };
             await AttachJwtAsync(request);
 
             var response = await Http.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
-                // Refresh heat
                 var getHeat = new HttpRequestMessage(HttpMethod.Get, $"api/session/heat/{HeatID}");
                 await AttachJwtAsync(getHeat);
 
@@ -100,12 +109,12 @@ else
             }
             else
             {
-                Console.WriteLine("⛔ Failed to save lap.");
+                ErrorMessage = "⛔ Failed to save lap.";
             }
         }
         else
         {
-            Console.WriteLine("⛔ Invalid time format.");
+            ErrorMessage = "Invalid time format. Use 1.45.321 or 47.890.";
         }
     }
 
@@ -157,10 +166,8 @@ else
             return "-";
 
         var t = time.Value;
-
-        if (t.Minutes == 0)
-            return $"{t.Seconds}.{t.Milliseconds:D3}";
-
-        return $"{t.Minutes}:{t.Seconds:D2}.{t.Milliseconds:D3}";
+        return t.Minutes == 0
+            ? $"{t.Seconds}.{t.Milliseconds:D3}"
+            : $"{t.Minutes}:{t.Seconds:D2}.{t.Milliseconds:D3}";
     }
 }

@@ -4,10 +4,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Infrastructure.Persistence.Migrations
+namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class ManualLaptimeEntry : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -45,7 +45,10 @@ namespace Infrastructure.Persistence.Migrations
                     Name = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Location = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    StartLineLat = table.Column<double>(type: "double", nullable: false),
+                    StartLineLng = table.Column<double>(type: "double", nullable: false),
+                    RadiusMeters = table.Column<double>(type: "double", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -90,11 +93,18 @@ namespace Infrastructure.Persistence.Migrations
                     SessionID = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    CircuitID = table.Column<int>(type: "int", nullable: false)
+                    CircuitID = table.Column<int>(type: "int", nullable: false),
+                    AccountID = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Session", x => x.SessionID);
+                    table.ForeignKey(
+                        name: "FK_Session_Account_AccountID",
+                        column: x => x.AccountID,
+                        principalTable: "Account",
+                        principalColumn: "AccountID",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Session_Circuit_CircuitID",
                         column: x => x.CircuitID,
@@ -134,7 +144,8 @@ namespace Infrastructure.Persistence.Migrations
                     HeatID = table.Column<int>(type: "int", nullable: false),
                     TotalTime = table.Column<TimeSpan>(type: "time(6)", nullable: true),
                     StartTime = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    EndTime = table.Column<DateTime>(type: "datetime(6)", nullable: true)
+                    EndTime = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    LapNumber = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -148,6 +159,61 @@ namespace Infrastructure.Persistence.Migrations
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
+            migrationBuilder.CreateTable(
+                name: "GPSPoints",
+                columns: table => new
+                {
+                    GPSPointID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    Latitude = table.Column<double>(type: "double", nullable: false),
+                    Longitude = table.Column<double>(type: "double", nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    MiniSectorNumber = table.Column<int>(type: "int", nullable: true),
+                    DeltaToBest = table.Column<TimeSpan>(type: "time(6)", nullable: true),
+                    LapTimeID = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_GPSPoints", x => x.GPSPointID);
+                    table.ForeignKey(
+                        name: "FK_GPSPoints_LapTime_LapTimeID",
+                        column: x => x.LapTimeID,
+                        principalTable: "LapTime",
+                        principalColumn: "LapTimeID",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "MiniSectors",
+                columns: table => new
+                {
+                    MiniSectorID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    LapTimeID = table.Column<int>(type: "int", nullable: false),
+                    SectorNumber = table.Column<int>(type: "int", nullable: false),
+                    StartTime = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    EndTime = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    IsFasterThanBest = table.Column<bool>(type: "tinyint(1)", nullable: true),
+                    IsFasterThanPrevious = table.Column<bool>(type: "tinyint(1)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MiniSectors", x => x.MiniSectorID);
+                    table.ForeignKey(
+                        name: "FK_MiniSectors_LapTime_LapTimeID",
+                        column: x => x.LapTimeID,
+                        principalTable: "LapTime",
+                        principalColumn: "LapTimeID",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_GPSPoints_LapTimeID",
+                table: "GPSPoints",
+                column: "LapTimeID");
+
             migrationBuilder.CreateIndex(
                 name: "IX_Heat_SessionID",
                 table: "Heat",
@@ -159,10 +225,20 @@ namespace Infrastructure.Persistence.Migrations
                 column: "HeatID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_MiniSectors_LapTimeID",
+                table: "MiniSectors",
+                column: "LapTimeID");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Person_AccountID",
                 table: "Person",
                 column: "AccountID",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Session_AccountID",
+                table: "Session",
+                column: "AccountID");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Session_CircuitID",
@@ -174,19 +250,25 @@ namespace Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "LapTime");
+                name: "GPSPoints");
+
+            migrationBuilder.DropTable(
+                name: "MiniSectors");
 
             migrationBuilder.DropTable(
                 name: "Person");
 
             migrationBuilder.DropTable(
+                name: "LapTime");
+
+            migrationBuilder.DropTable(
                 name: "Heat");
 
             migrationBuilder.DropTable(
-                name: "Account");
+                name: "Session");
 
             migrationBuilder.DropTable(
-                name: "Session");
+                name: "Account");
 
             migrationBuilder.DropTable(
                 name: "Circuit");
