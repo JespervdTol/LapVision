@@ -1,0 +1,11 @@
+{
+  "solution": {
+    "path": "LapVision.sln",
+    "projects": [
+      "API\\API.csproj",
+      "Infrastructure\\Infrastructure.csproj",
+      "Model\\Model.csproj",
+      "Contracts\\Contracts.csproj"
+    ]
+  }
+}

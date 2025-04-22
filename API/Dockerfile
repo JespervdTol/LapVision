@@ -1,33 +1,53 @@
-# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-# Depending on the operating system of the host machines(s) that will build or run the containers, the image specified in the FROM statement may need to be changed.
-# For more information, please see https://aka.ms/containercompat
-
-# This stage is used when running from VS in fast mode (Default for Debug configuration)
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-nanoserver-1809 AS base
+# -------- Base Image --------
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-windowsservercore-ltsc2022 AS base
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 5082
+EXPOSE 7234
 
+# -------- Build Image --------
+FROM mcr.microsoft.com/dotnet/sdk:8.0-windowsservercore-ltsc2022 AS build
 
-# This stage is used to build the service project
-FROM mcr.microsoft.com/dotnet/sdk:8.0-nanoserver-1809 AS build
-ARG BUILD_CONFIGURATION=Release
+# Accept build configuration via ARG (default to Release)
+ARG CONFIGURATION=Release
+
 WORKDIR /src
-COPY ["API/API.csproj", "API/"]
-COPY ["Core/Core.csproj", "Core/"]
-RUN dotnet restore "./API/API.csproj"
-COPY . .
-WORKDIR "/src/API"
-RUN dotnet build "./API.csproj" -c %BUILD_CONFIGURATION% -o /app/build
 
-# This stage is used to publish the service project to be copied to the final stage
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./API.csproj" -c %BUILD_CONFIGURATION% -o /app/publish /p:UseAppHost=false
+# Copy solution and project files separately for Docker layer caching
+COPY LapVision.Docker.slnf ./LapVision.Docker.slnf
+COPY LapVision.sln ./LapVision.sln
 
-# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
+COPY API/API.csproj API/
+COPY Contracts/Contracts.csproj Contracts/
+COPY Infrastructure/Infrastructure.csproj Infrastructure/
+COPY Model/Model.csproj Model/
+
+# Restore only the filtered projects listed in the .slnf
+RUN dotnet restore LapVision.Docker.slnf
+
+# Copy everything else
+COPY . ./
+
+# Build and publish the API project
+WORKDIR /src/API
+RUN dotnet publish API.csproj -c %CONFIGURATION% -o /app/publish/API /p:UseAppHost=false
+
+# -------- Runtime Image --------
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "API.dll"]
+
+# Copy the published output
+COPY --from=build /app/publish/API ./API
+
+# Copy configuration and certificate
+COPY API/appsettings.json ./API/appsettings.json
+COPY API/cert.pfx ./cert.pfx
+
+# Optional: Copy published frontend output (if needed)
+COPY publish ./App
+
+# Entrypoint script
+COPY entrypoint.ps1 .
+
+# Use PowerShell and run the script
+SHELL ["powershell", "-Command"]
+ENTRYPOINT ["powershell", "-File", "entrypoint.ps1"]

@@ -1,11 +1,15 @@
-﻿using TInfrastructure.Context;
-using Core.Model;
+﻿using Infrastructure.Persistence;
+using Model.Entities;
+using Model.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Contracts.DTO.Auth;
+using API.Helpers.Mappers;
+using API.Helpers;
 
 namespace API.Services
 {
@@ -20,7 +24,7 @@ namespace API.Services
             _config = config;
         }
 
-        public async Task<Account?> RegisterAsync(string email, string username, string password, UserRole role)
+        public async Task<Account?> RegisterAsync(string email, string username, string password, UserRole role, RegisterRequest request)
         {
             if (await _context.Accounts.AnyAsync(a => a.Email == email))
                 return null;
@@ -38,19 +42,19 @@ namespace API.Services
             _context.Accounts.Add(account);
             await _context.SaveChangesAsync();
 
+            var person = request.ToPerson(account.AccountID);
+            person.ProfilePicture = ImageDefaults.DefaultProfilePicture;
+            _context.People.Add(person);
+            await _context.SaveChangesAsync();
+
             return account;
         }
 
         public async Task<Account?> LoginAsync(string emailOrUsername, string password)
         {
             var account = await _context.Accounts
-                .FirstOrDefaultAsync(a => a.Email == emailOrUsername);
-
-            if (account == null)
-            {
-                account = await _context.Accounts
-                    .FirstOrDefaultAsync(a => a.Username == emailOrUsername);
-            }
+                .FirstOrDefaultAsync(a => a.Email == emailOrUsername)
+                ?? await _context.Accounts.FirstOrDefaultAsync(a => a.Username == emailOrUsername);
 
             if (account == null || !VerifyPassword(password, account.PasswordHash))
                 return null;
@@ -63,11 +67,7 @@ namespace API.Services
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var expiresAt = DateTime.UtcNow.AddSeconds(60);
-            System.Diagnostics.Debug.WriteLine("💡 New token being generated right now!");
-            System.Diagnostics.Debug.WriteLine("⏰ Expires at: " + expiresAt);
-
-            System.Diagnostics.Debug.WriteLine($"Token expiration set to: {expiresAt} (Unix timestamp: {new DateTimeOffset(expiresAt).ToUnixTimeSeconds()})");
+            var expiresAt = DateTime.UtcNow.AddHours(3);
 
             var claims = new[]
             {
@@ -86,7 +86,6 @@ namespace API.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
-
 
         private static string HashPassword(string password)
         {

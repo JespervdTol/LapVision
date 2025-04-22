@@ -1,0 +1,200 @@
+﻿@page "/session"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using Contracts.DTO.Session
+@using Contracts.DTO.Circuit
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+
+<h3>Sessions</h3>
+
+<button class="btn btn-primary mb-3" @onclick="ShowCreateModal">+ Create Session</button>
+
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <div class="alert alert-danger">@ErrorMessage</div>
+}
+
+@if (sessions == null)
+{
+    <p>Loading sessions...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Circuit</th>
+                <th>Created</th>
+                <th>Heats</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in sessions)
+            {
+                <tr>
+                    <td>@s.CircuitName</td>
+                    <td>@s.CreatedAt.ToLocalTime().ToString("g")</td>
+                    <td>@s.HeatCount</td>
+                    <td><button class="btn btn-sm btn-outline-info" @onclick="() => ViewSession(s.SessionID)">View</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (showModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal show d-block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content p-4">
+                <h5>Create New Session</h5>
+
+                <div class="form-group">
+                    <label>Select Circuit</label>
+                    <select class="form-control" @bind="newSession.CircuitID">
+                        @foreach (var circuit in circuits)
+                        {
+                            <option value="@circuit.CircuitID">@circuit.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Number of Heats</label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <button class="btn btn-outline-secondary" @onclick="() => ChangeHeats(-1)" disabled="@(newSession.NumberOfHeats <= 1)">-</button>
+                        </div>
+                        <input type="number" class="form-control text-center" @bind="newSession.NumberOfHeats" min="1" />
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-secondary" @onclick="() => ChangeHeats(1)">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-3">
+                    <button class="btn btn-secondary mr-2" @onclick="HideCreateModal">Cancel</button>
+                    <button class="btn btn-success" @onclick="CreateSession">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<SessionOverviewDTO>? sessions;
+    private CreateSessionRequest newSession = new();
+    private string? ErrorMessage;
+    private bool showModal = false;
+
+    private List<CircuitDTO> circuits = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCircuits();
+        await LoadSessions();
+    }
+
+    private async Task LoadSessions()
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "api/session");
+            await AttachJwtAsync(request);
+
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                sessions = await response.Content.ReadFromJsonAsync<List<SessionOverviewDTO>>();
+            }
+            else
+            {
+                ErrorMessage = $"Failed to load sessions: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load sessions: {ex.Message}";
+        }
+    }
+
+    private async Task CreateSession()
+    {
+        ErrorMessage = null;
+
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/session")
+                {
+                    Content = JsonContent.Create(newSession)
+                };
+            await AttachJwtAsync(request);
+
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                newSession = new();
+                showModal = false;
+                await LoadSessions();
+            }
+            else
+            {
+                ErrorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error creating session: {ex.Message}";
+        }
+    }
+
+    private async Task LoadCircuits()
+    {
+        try
+        {
+            circuits = await Http.GetFromJsonAsync<List<CircuitDTO>>("api/circuits");
+            if (circuits.Any())
+            {
+                newSession.CircuitID = circuits.First().CircuitID;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load circuits: {ex.Message}";
+        }
+    }
+
+    private void ViewSession(int sessionId)
+    {
+        Navigation.NavigateTo($"/session/{sessionId}");
+    }
+
+    private void ShowCreateModal()
+    {
+        newSession = new CreateSessionRequest { NumberOfHeats = 1 };
+        showModal = true;
+    }
+
+    private void HideCreateModal()
+    {
+        showModal = false;
+    }
+
+    private void ChangeHeats(int delta)
+    {
+        newSession.NumberOfHeats = Math.Max(1, newSession.NumberOfHeats + delta);
+    }
+
+    private async Task AttachJwtAsync(HttpRequestMessage request)
+    {
+        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+        if (!string.IsNullOrEmpty(token))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+}

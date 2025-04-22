@@ -1,10 +1,10 @@
-﻿using TInfrastructure.Context;
-using Core.Model;
+﻿using Infrastructure.Persistence;
+using Model.Entities;
+using Model.Enums;
 using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -52,10 +52,8 @@ builder.Services.AddDbContext<DataContext>(options =>
         mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
 
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddHttpClient<WeatherService>(client =>
-{
-    client.BaseAddress = new Uri("https://localhost:7234/");
-});
+builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<LapTimeService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

@@ -1,0 +1,90 @@
+﻿@page "/profile"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using Contracts.DTO.Auth
+@using System.Net.Http.Headers
+
+<h3>My Profile</h3>
+
+@if (profile == null)
+{
+    <p>Loading profile...</p>
+}
+else
+{
+    <div class="profile-card">
+        <label for="fileInput">
+            <img src="data:image/png;base64,@profile.ProfilePicture"
+                 class="profile-pic"
+                 title="Click to change profile picture" />
+        </label>
+        <InputFile id="fileInput" OnChange="HandleFileUpload" style="display: none;" />
+
+        <div class="upload-hint">Click your profile picture to upload a new one</div>
+
+        <div class="profile-info">
+            <p><span class="profile-label">Full Name:</span> <span class="profile-value">@profile.FirstName @(!string.IsNullOrWhiteSpace(profile.Prefix) ? profile.Prefix + " " : "")@profile.LastName</span></p>
+            <p><span class="profile-label">Email:</span> <span class="profile-value">@profile.Email</span></p>
+            <p><span class="profile-label">Username:</span> <span class="profile-value">@profile.Username</span></p>
+            <p><span class="profile-label">Role:</span> <span class="profile-value">@profile.Role</span></p>
+            <p><span class="profile-label">Date of Birth:</span> <span class="profile-value">@profile.DateOfBirth.ToString("yyyy-MM-dd")</span></p>
+        </div>
+    </div>
+}
+
+@code {
+    private UserProfileDTO? profile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+        if (string.IsNullOrEmpty(token))
+            return;
+
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "api/profile");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                profile = await response.Content.ReadFromJsonAsync<UserProfileDTO>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching profile: {ex.Message}");
+        }
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        const long maxSize = 3 * 1024 * 1024;
+        var file = e.File;
+
+        if (file.Size > maxSize)
+        {
+            await JS.InvokeVoidAsync("alert", "⚠️ Image is too big! Please upload one that is 3MB or smaller.");
+            return;
+        }
+
+        using var stream = file.OpenReadStream(maxAllowedSize: maxSize);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var imageBytes = ms.ToArray();
+
+        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+        var request = new HttpRequestMessage(HttpMethod.Put, "api/profile/picture")
+        {
+            Content = JsonContent.Create(imageBytes)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await Http.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            profile!.ProfilePicture = Convert.ToBase64String(imageBytes);
+        }
+    }
+}

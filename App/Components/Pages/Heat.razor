@@ -1,0 +1,166 @@
+﻿@page "/heat/{HeatID:int}"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using Contracts.DTO.Heat
+@using Contracts.DTO.LapTime
+@using System.Net.Http.Json
+@using System.Net.Http.Headers
+
+<h3>Heat Details</h3>
+
+@if (heat == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <p><strong>Heat #:</strong> @heat.HeatNumber</p>
+
+    <h5>Laptimes</h5>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Lap</th>
+                <th>Total Time</th>
+                <th>Start</th>
+                <th>End</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var lap in heat.LapTimes.OrderBy(l => l.LapNumber))
+            {
+                <tr>
+                    <td>@lap.LapNumber</td>
+                    <td>@FormatTime(lap.TotalTime)</td>
+                    <td>@lap.StartTime?.ToLocalTime().ToString("T")</td>
+                    <td>@lap.EndTime?.ToLocalTime().ToString("T")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h5>Add LapTime</h5>
+    <div class="form-inline mb-3">
+        <input type="text" class="form-control mr-2" placeholder="Lap Time (e.g. 1.49.123 or 46.321)" @bind="rawLapTime" />
+        <button class="btn btn-success" @onclick="AddLapTime">Add</button>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int HeatID { get; set; }
+
+    private HeatDetailDTO? heat;
+    private CreateLapTimeRequest newLap = new();
+    private string? rawLapTime;
+
+    protected override async Task OnInitializedAsync()
+    {
+        newLap.HeatID = HeatID;
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"api/session/heat/{HeatID}");
+        await AttachJwtAsync(request);
+
+        var response = await Http.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            heat = await response.Content.ReadFromJsonAsync<HeatDetailDTO>();
+        }
+        else
+        {
+            Console.WriteLine($"⚠️ Failed to load heat: {response.StatusCode}");
+        }
+    }
+
+    private async Task AddLapTime()
+    {
+        if (TryParseCustomTime(rawLapTime, out var parsed))
+        {
+            newLap.TotalTime = parsed;
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/laptime")
+                {
+                    Content = JsonContent.Create(newLap)
+                };
+            await AttachJwtAsync(request);
+
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                // Refresh heat
+                var getHeat = new HttpRequestMessage(HttpMethod.Get, $"api/session/heat/{HeatID}");
+                await AttachJwtAsync(getHeat);
+
+                var updated = await Http.SendAsync(getHeat);
+                if (updated.IsSuccessStatusCode)
+                {
+                    heat = await updated.Content.ReadFromJsonAsync<HeatDetailDTO>();
+                    rawLapTime = null;
+                }
+            }
+            else
+            {
+                Console.WriteLine("⛔ Failed to save lap.");
+            }
+        }
+        else
+        {
+            Console.WriteLine("⛔ Invalid time format.");
+        }
+    }
+
+    private async Task AttachJwtAsync(HttpRequestMessage request)
+    {
+        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+        if (!string.IsNullOrEmpty(token))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+
+    private bool TryParseCustomTime(string? input, out TimeSpan result)
+    {
+        result = TimeSpan.Zero;
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        string[] parts = input.Split('.');
+        try
+        {
+            if (parts.Length == 3)
+            {
+                int minutes = int.Parse(parts[0]);
+                int seconds = int.Parse(parts[1]);
+                int milliseconds = int.Parse(parts[2]);
+                result = new TimeSpan(0, 0, minutes, seconds, milliseconds);
+                return true;
+            }
+            if (parts.Length == 2)
+            {
+                int seconds = int.Parse(parts[0]);
+                int milliseconds = int.Parse(parts[1]);
+                result = new TimeSpan(0, 0, 0, seconds, milliseconds);
+                return true;
+            }
+        }
+        catch
+        {
+            return false;
+        }
+
+        return false;
+    }
+
+    private string FormatTime(TimeSpan? time)
+    {
+        if (!time.HasValue)
+            return "-";
+
+        var t = time.Value;
+
+        if (t.Minutes == 0)
+            return $"{t.Seconds}.{t.Milliseconds:D3}";
+
+        return $"{t.Minutes}:{t.Seconds:D2}.{t.Milliseconds:D3}";
+    }
+}

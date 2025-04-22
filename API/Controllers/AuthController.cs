@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using API.Services;
-using Core.Model;
-using TContracts.DTO.Auth;
+using Contracts.DTO.Auth;
+using API.Helpers.Mappers;
 
 namespace API.Controllers
 {
@@ -19,13 +19,21 @@ namespace API.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest request)
         {
-            var account = await _authService.RegisterAsync(request.Email, request.Username, request.Password, request.Role);
+            var modelRole = request.Role.ToModel();
+
+            var account = await _authService.RegisterAsync(
+                request.Email,
+                request.Username,
+                request.Password,
+                modelRole,
+                request
+            );
 
             if (account == null)
                 return BadRequest("User with this email already exists.");
 
             var token = _authService.GenerateJwtToken(account);
-            return Ok(new { token });
+            return Ok(account.ToAuthResponse(token));
         }
 
         [HttpPost("login")]
@@ -37,7 +45,7 @@ namespace API.Controllers
                 return Unauthorized("Invalid credentials.");
 
             var token = _authService.GenerateJwtToken(account);
-            return Ok(new { token });
+            return Ok(account.ToAuthResponse(token));
         }
     }
 }
