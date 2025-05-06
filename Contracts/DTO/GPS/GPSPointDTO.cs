@@ -12,8 +12,8 @@ namespace Contracts.DTO.GPS
         public double Longitude { get; set; }
         public DateTime Timestamp { get; set; }
 
-        // Optional, filled by backend during processing
         public int? MiniSectorNumber { get; set; }
-        public TimeSpan? DeltaToBest { get; set; }
+
+        public double? DeltaToBest { get; set; }
     }
 }

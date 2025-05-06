@@ -18,14 +18,20 @@ namespace API.Helpers.Mappers
 
         public static Person ToPerson(this RegisterRequest dto, int accountId)
         {
-            return new Person
+            Person person = dto.Role switch
             {
-                FirstName = dto.FirstName,
-                Prefix = dto.Prefix ?? string.Empty,
-                LastName = dto.LastName,
-                DateOfBirth = dto.DateOfBirth,
-                AccountID = accountId
+                Contracts.Enums.UserRole.Driver => new Driver(),
+                Contracts.Enums.UserRole.Coach => new Coach(),
+                _ => new Person()
             };
+
+            person.FirstName = dto.FirstName;
+            person.Prefix = dto.Prefix ?? string.Empty;
+            person.LastName = dto.LastName;
+            person.DateOfBirth = dto.DateOfBirth;
+            person.AccountID = accountId;
+
+            return person;
         }
 
         public static AuthResponse ToAuthResponse(this Account account, string token)

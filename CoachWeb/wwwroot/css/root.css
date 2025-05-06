@@ -1,0 +1,12 @@
+﻿:root {
+    --background-dark: #1c1c1e;
+    --input-background: #2c2c2e;
+    --text-light: #ffffff;
+    --border-color: #444444;
+    --placeholder-color: #888888;
+    --primary-red: #b3001b;
+    --primary-red-hover: #8e0016;
+    --link-color: #b3001b;
+    --alert-red: #ff4d4d;
+    --box-shadow-dark: rgba(0, 0, 0, 0.6);
+}

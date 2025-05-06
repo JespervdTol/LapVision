@@ -18,6 +18,7 @@ namespace Infrastructure.Persistence
         public DbSet<LapTime> LapTimes { get; set; }
         public DbSet<MiniSector> MiniSectors { get; set; }
         public DbSet<GPSPoint> GPSPoints { get; set; }
+        public DbSet<CircuitLayoutPoint> CircuitLayoutPoints { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -104,6 +105,13 @@ namespace Infrastructure.Persistence
                 .HasOne(g => g.LapTime)
                 .WithMany(lt => lt.GPSPoints)
                 .HasForeignKey(g => g.LapTimeID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CircuitLayoutPoint>().ToTable("CircuitLayoutPoint");
+            modelBuilder.Entity<Circuit>()
+                .HasMany(c => c.LayoutPoints)
+                .WithOne(lp => lp.Circuit)
+                .HasForeignKey(lp => lp.CircuitID)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

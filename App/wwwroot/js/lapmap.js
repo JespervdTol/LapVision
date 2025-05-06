@@ -26,14 +26,13 @@
         const sector = miniSectors.find(s => s.sectorNumber == key);
         if (!sector) continue;
 
-        // 🎨 Determine color
         let color = "gray";
         if (sector.isFasterThanBest === true) {
-            color = "purple"; // 🔥 Fastest ever
+            color = "purple";
         } else if (sector.isFasterThanPrevious === true) {
-            color = "limegreen"; // ✅ Faster than previous
+            color = "limegreen";
         } else if (sector.isFasterThanPrevious === false) {
-            color = "yellow"; // 🟡 Slower than previous
+            color = "yellow";
         }
 
         ctx.strokeStyle = color;

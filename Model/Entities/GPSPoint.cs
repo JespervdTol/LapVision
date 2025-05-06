@@ -19,7 +19,7 @@ namespace Model.Entities
 
         public int? MiniSectorNumber { get; set; }
 
-        public TimeSpan? DeltaToBest { get; set; }
+        public double? DeltaToBest { get; set; }
 
         public int LapTimeID { get; set; }
 

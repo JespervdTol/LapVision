@@ -30,13 +30,16 @@ namespace API.Services
 
         public async Task<List<SessionOverviewDTO>> GetAllSessionsAsync(int accountId)
         {
-            var sessions = await _context.Sessions
-                .Include(s => s.Circuit)
-                .Include(s => s.Heats)
+            return await _context.Sessions
                 .Where(s => s.AccountID == accountId)
+                .Select(s => new SessionOverviewDTO
+                {
+                    SessionID = s.SessionID,
+                    CircuitName = s.Circuit.Name,
+                    CreatedAt = s.CreatedAt,
+                    HeatCount = s.Heats.Count
+                })
                 .ToListAsync();
-
-            return sessions.Select(s => s.ToOverviewDTO()).ToList();
         }
 
         public async Task<SessionDetailDTO?> GetSessionByIdAsync(int sessionId, int accountId)

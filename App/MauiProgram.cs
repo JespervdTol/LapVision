@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
-using Microsoft.Maui.Devices; // For DeviceInfo
+using Microsoft.Extensions.Configuration;
+using System.Reflection;
 
 namespace App
 {
@@ -18,27 +19,29 @@ namespace App
 
             builder.Services.AddMauiBlazorWebView();
 
-            string apiBaseUrl;
+            var assembly = Assembly.GetExecutingAssembly();
+            using var stream = assembly.GetManifestResourceStream("App.appsettings.Development.json");
+            var config = new ConfigurationBuilder()
+                .AddJsonStream(stream!)
+                .Build();
+
+            string baseUrl;
+            var baseUrls = config.GetSection("ApiSettings:BaseUrls");
 
             if (DeviceInfo.Current.Platform == DevicePlatform.Android)
             {
-                if (DeviceInfo.DeviceType == DeviceType.Virtual)
-                {
-                    apiBaseUrl = "http://10.0.2.2:5082/";
-                }
-                else
-                {
-                    apiBaseUrl = "http://192.168.2.9:5082/";
-                }
+                baseUrl = DeviceInfo.DeviceType == DeviceType.Virtual
+                    ? baseUrls["Emulator"]
+                    : baseUrls["PhysicalAndroid"];
             }
             else
             {
-                apiBaseUrl = "https://localhost:7234/";
+                baseUrl = baseUrls["Windows"];
             }
 
             builder.Services.AddScoped(sp => new HttpClient
             {
-                BaseAddress = new Uri(apiBaseUrl),
+                BaseAddress = new Uri(baseUrl),
                 Timeout = TimeSpan.FromSeconds(10)
             });
 

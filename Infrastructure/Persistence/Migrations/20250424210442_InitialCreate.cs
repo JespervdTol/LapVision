@@ -4,10 +4,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Infrastructure.Migrations
+namespace Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -82,6 +82,29 @@ namespace Infrastructure.Migrations
                         column: x => x.AccountID,
                         principalTable: "Account",
                         principalColumn: "AccountID",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "CircuitLayoutPoint",
+                columns: table => new
+                {
+                    CircuitLayoutPointID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    CircuitID = table.Column<int>(type: "int", nullable: false),
+                    Latitude = table.Column<double>(type: "double", nullable: false),
+                    Longitude = table.Column<double>(type: "double", nullable: false),
+                    OrderIndex = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CircuitLayoutPoint", x => x.CircuitLayoutPointID);
+                    table.ForeignKey(
+                        name: "FK_CircuitLayoutPoint_Circuit_CircuitID",
+                        column: x => x.CircuitID,
+                        principalTable: "Circuit",
+                        principalColumn: "CircuitID",
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
@@ -169,7 +192,7 @@ namespace Infrastructure.Migrations
                     Longitude = table.Column<double>(type: "double", nullable: false),
                     Timestamp = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     MiniSectorNumber = table.Column<int>(type: "int", nullable: true),
-                    DeltaToBest = table.Column<TimeSpan>(type: "time(6)", nullable: true),
+                    DeltaToBest = table.Column<double>(type: "double", nullable: true),
                     LapTimeID = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -208,6 +231,11 @@ namespace Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CircuitLayoutPoint_CircuitID",
+                table: "CircuitLayoutPoint",
+                column: "CircuitID");
 
             migrationBuilder.CreateIndex(
                 name: "IX_GPSPoints_LapTimeID",
@@ -249,6 +277,9 @@ namespace Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "CircuitLayoutPoint");
+
             migrationBuilder.DropTable(
                 name: "GPSPoints");
 

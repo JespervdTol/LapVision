@@ -4,19 +4,16 @@ using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Infrastructure.Migrations
+namespace Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250422172913_Initial")]
-    partial class Initial
+    partial class DataContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -90,6 +87,33 @@ namespace Infrastructure.Migrations
                     b.ToTable("Circuit", (string)null);
                 });
 
+            modelBuilder.Entity("Model.Entities.CircuitLayoutPoint", b =>
+                {
+                    b.Property<int>("CircuitLayoutPointID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CircuitLayoutPointID"));
+
+                    b.Property<int>("CircuitID")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.HasKey("CircuitLayoutPointID");
+
+                    b.HasIndex("CircuitID");
+
+                    b.ToTable("CircuitLayoutPoint", (string)null);
+                });
+
             modelBuilder.Entity("Model.Entities.GPSPoint", b =>
                 {
                     b.Property<int>("GPSPointID")
@@ -98,8 +122,8 @@ namespace Infrastructure.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("GPSPointID"));
 
-                    b.Property<TimeSpan?>("DeltaToBest")
-                        .HasColumnType("time(6)");
+                    b.Property<double?>("DeltaToBest")
+                        .HasColumnType("double");
 
                     b.Property<int>("LapTimeID")
                         .HasColumnType("int");
@@ -296,6 +320,17 @@ namespace Infrastructure.Migrations
                     b.HasDiscriminator().HasValue("Driver");
                 });
 
+            modelBuilder.Entity("Model.Entities.CircuitLayoutPoint", b =>
+                {
+                    b.HasOne("Model.Entities.Circuit", "Circuit")
+                        .WithMany("LayoutPoints")
+                        .HasForeignKey("CircuitID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Circuit");
+                });
+
             modelBuilder.Entity("Model.Entities.GPSPoint", b =>
                 {
                     b.HasOne("Model.Entities.LapTime", "LapTime")
@@ -374,6 +409,11 @@ namespace Infrastructure.Migrations
                 {
                     b.Navigation("Person")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Model.Entities.Circuit", b =>
+                {
+                    b.Navigation("LayoutPoints");
                 });
 
             modelBuilder.Entity("Model.Entities.Heat", b =>

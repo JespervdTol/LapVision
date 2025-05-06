@@ -9,8 +9,6 @@ namespace Contracts.DTO.Circuit
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
 
-        public TimeSpan Duration => EndTime - StartTime;
-
         public bool? IsFasterThanBest { get; set; }
         public bool? IsFasterThanPrevious { get; set; }
     }

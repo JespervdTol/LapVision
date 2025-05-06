@@ -103,8 +103,17 @@ else
     {
         try
         {
+            var token = await JS.InvokeAsync<string>("sessionStorage.getItem", "token")
+                        ?? await JS.InvokeAsync<string>("localStorage.getItem", "token");
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                ErrorMessage = "You must be logged in to view sessions.";
+                return;
+            }
+
             var request = new HttpRequestMessage(HttpMethod.Get, "api/session");
-            await AttachJwtAsync(request);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var response = await Http.SendAsync(request);
             if (response.IsSuccessStatusCode)

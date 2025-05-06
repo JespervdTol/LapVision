@@ -1,53 +1,54 @@
-﻿# -------- Base Image --------
+﻿# -------- Base Image -------- 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-windowsservercore-ltsc2022 AS base
 WORKDIR /app
 EXPOSE 5082
 EXPOSE 7234
+EXPOSE 7222
+EXPOSE 5223 
 
 # -------- Build Image --------
 FROM mcr.microsoft.com/dotnet/sdk:8.0-windowsservercore-ltsc2022 AS build
 
-# Accept build configuration via ARG (default to Release)
 ARG CONFIGURATION=Release
-
 WORKDIR /src
 
-# Copy solution and project files separately for Docker layer caching
-COPY LapVision.Docker.slnf ./LapVision.Docker.slnf
+# Copy solution and project files
 COPY LapVision.sln ./LapVision.sln
-
+COPY LapVision.Docker.slnf ./LapVision.Docker.slnf
 COPY API/API.csproj API/
+COPY CoachWeb/CoachWeb.csproj CoachWeb/
 COPY Contracts/Contracts.csproj Contracts/
 COPY Infrastructure/Infrastructure.csproj Infrastructure/
 COPY Model/Model.csproj Model/
 
-# Restore only the filtered projects listed in the .slnf
+# Restore filtered solution
 RUN dotnet restore LapVision.Docker.slnf
 
-# Copy everything else
-COPY . ./
+# Copy everything
+COPY . .
 
-# Build and publish the API project
+# --- Build API ---
 WORKDIR /src/API
-RUN dotnet publish API.csproj -c %CONFIGURATION% -o /app/publish/API /p:UseAppHost=false
+RUN dotnet publish -c %CONFIGURATION% -o /app/publish/API /p:UseAppHost=false
+
+# --- Build CoachWeb ---
+WORKDIR /src/CoachWeb
+RUN dotnet publish -c %CONFIGURATION% -o /app/publish/CoachWeb /p:UseAppHost=false
 
 # -------- Runtime Image --------
 FROM base AS final
 WORKDIR /app
 
-# Copy the published output
+# Copy published output
 COPY --from=build /app/publish/API ./API
+COPY --from=build /app/publish/CoachWeb ./CoachWeb
 
-# Copy configuration and certificate
-COPY API/appsettings.json ./API/appsettings.json
+# Copy any required cert or shared resources
 COPY API/cert.pfx ./cert.pfx
 
-# Optional: Copy published frontend output (if needed)
-COPY publish ./App
-
-# Entrypoint script
+# Entrypoint script (optional)
 COPY entrypoint.ps1 .
 
-# Use PowerShell and run the script
+# Use PowerShell to launch both apps
 SHELL ["powershell", "-Command"]
 ENTRYPOINT ["powershell", "-File", "entrypoint.ps1"]

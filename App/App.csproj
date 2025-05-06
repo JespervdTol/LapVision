@@ -77,6 +77,14 @@
 	  <Folder Include="Resources\Images\" />
 	</ItemGroup>
 
+    <ItemGroup>
+      <EmbeddedResource Include="appsettings.Development.json" />
+    </ItemGroup>
+	
+    <ItemGroup>
+      <EmbeddedResource Include="appsettings.Production.json" />
+    </ItemGroup>
+
 	<ItemGroup>
 	  <ProjectReference Include="..\Contracts\Contracts.csproj" />
 	</ItemGroup>

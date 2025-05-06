@@ -67,7 +67,7 @@ namespace API.Services
             };
 
             _context.LapTimes.Add(lapTime);
-            await _context.SaveChangesAsync(); // Ensures LapTimeID is generated
+            await _context.SaveChangesAsync();
 
             var sectors = new List<MiniSector>();
             foreach (var dto in request.MiniSectors)
@@ -78,7 +78,7 @@ namespace API.Services
                     SectorNumber = dto.SectorNumber,
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
-                    IsFasterThanBest = null, // Will be computed below
+                    IsFasterThanBest = null,
                     IsFasterThanPrevious = null
                 };
 
@@ -106,7 +106,6 @@ namespace API.Services
 
             await _context.SaveChangesAsync();
 
-            // ✅ Compare only the current lap against history
             await UpdateSectorComparisonsAsync(lapTime);
 
             var updatedLap = await _context.LapTimes
@@ -161,12 +160,10 @@ namespace API.Services
 
                 System.Diagnostics.Debug.WriteLine($"Lap {newLapFull.LapNumber} - Sector {sector.SectorNumber} Duration: {duration}ms");
 
-                // Compare to best
                 sector.IsFasterThanBest = bestTimes.TryGetValue(sector.SectorNumber, out var best)
                     ? Math.Abs(duration - best) < 1e-3 || duration < best
                     : false;
 
-                // Compare to previous
                 if (previousLap != null)
                 {
                     var prevSector = previousLap.MiniSectors.FirstOrDefault(s => s.SectorNumber == sector.SectorNumber);

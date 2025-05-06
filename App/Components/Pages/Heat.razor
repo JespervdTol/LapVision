@@ -1,10 +1,16 @@
 ﻿@page "/heat/{HeatID:int}"
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @inject IJSRuntime JS
 @using Contracts.DTO.Heat
 @using Contracts.DTO.LapTime
+@using Contracts.DTO.GPS
+@using Contracts.DTO.Circuit
 @using System.Net.Http.Json
 @using System.Net.Http.Headers
+@using System.Text.Json
+@using Microsoft.Maui.ApplicationModel
+@using System.Text
 
 <h3>Heat Details</h3>
 
@@ -48,6 +54,17 @@ else
         <input type="text" class="form-control mr-2" placeholder="Lap Time (e.g. 1.49.123 or 46.321)" @bind="rawLapTime" />
         <button class="btn btn-success" @onclick="AddLapTime">Add</button>
     </div>
+
+    @if (UserRole == "Admin")
+    {
+        <div class="mt-4">
+            <h5>🧪 Generate Fake Laps</h5>
+            <button class="btn btn-success mt-1" @onclick="GenerateFirstLap">🏁 First Lap (Baseline)</button>
+            <button class="btn btn-info mt-1" @onclick="GenerateSecondLap">✅ Second Lap (Faster)</button>
+            <button class="btn btn-warning mt-1" @onclick="GenerateThirdLap">🐢 Third Lap (Slower)</button>
+            <button class="btn btn-primary mt-1" @onclick="GenerateFourthLap">🔥 Fourth Lap (Mixed)</button>
+        </div>
+    }
 }
 
 @if (!string.IsNullOrWhiteSpace(ErrorMessage))
@@ -56,15 +73,28 @@ else
 }
 
 @code {
-    [Parameter]
-    public int HeatID { get; set; }
+    [Parameter] public int HeatID { get; set; }
 
     private HeatDetailDTO? heat;
     private CreateLapTimeRequest newLap = new();
     private string? rawLapTime;
     private string? ErrorMessage;
+    private string? UserRole;
+    private int currentLap = 1;
 
-    protected override async Task OnInitializedAsync()
+    private bool initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !initialized)
+        {
+            initialized = true;
+            await LoadHeatData();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadHeatData()
     {
         newLap.HeatID = HeatID;
 
@@ -89,9 +119,9 @@ else
             newLap.TotalTime = parsed;
 
             var request = new HttpRequestMessage(HttpMethod.Post, "api/laptime")
-            {
-                Content = JsonContent.Create(newLap)
-            };
+                {
+                    Content = JsonContent.Create(newLap)
+                };
             await AttachJwtAsync(request);
 
             var response = await Http.SendAsync(request);
@@ -99,7 +129,6 @@ else
             {
                 var getHeat = new HttpRequestMessage(HttpMethod.Get, $"api/session/heat/{HeatID}");
                 await AttachJwtAsync(getHeat);
-
                 var updated = await Http.SendAsync(getHeat);
                 if (updated.IsSuccessStatusCode)
                 {
@@ -130,25 +159,19 @@ else
     private bool TryParseCustomTime(string? input, out TimeSpan result)
     {
         result = TimeSpan.Zero;
-        if (string.IsNullOrWhiteSpace(input))
-            return false;
+        if (string.IsNullOrWhiteSpace(input)) return false;
 
         string[] parts = input.Split('.');
         try
         {
             if (parts.Length == 3)
             {
-                int minutes = int.Parse(parts[0]);
-                int seconds = int.Parse(parts[1]);
-                int milliseconds = int.Parse(parts[2]);
-                result = new TimeSpan(0, 0, minutes, seconds, milliseconds);
+                result = new TimeSpan(0, 0, int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]));
                 return true;
             }
             if (parts.Length == 2)
             {
-                int seconds = int.Parse(parts[0]);
-                int milliseconds = int.Parse(parts[1]);
-                result = new TimeSpan(0, 0, 0, seconds, milliseconds);
+                result = new TimeSpan(0, 0, 0, int.Parse(parts[0]), int.Parse(parts[1]));
                 return true;
             }
         }
@@ -164,10 +187,87 @@ else
     {
         if (!time.HasValue)
             return "-";
-
         var t = time.Value;
         return t.Minutes == 0
             ? $"{t.Seconds}.{t.Milliseconds:D3}"
             : $"{t.Minutes}:{t.Seconds:D2}.{t.Milliseconds:D3}";
+    }
+
+    private async Task GenerateFirstLap() => await GenerateLap(new[] { 15000.0, 15000.0, 15000.0 });
+    private async Task GenerateSecondLap() => await GenerateLap(new[] { 14300.0, 14300.0, 14300.0 });
+    private async Task GenerateThirdLap() => await GenerateLap(new[] { 16000.0, 16000.0, 16000.0 });
+    private async Task GenerateFourthLap() => await GenerateLap(new[] { 14166.0, 14166.0, 17000.0 });
+
+    private async Task GenerateLap(double[] sectorDurationsMs)
+    {
+        var start = DateTime.UtcNow;
+        var mid1 = start.AddMilliseconds(sectorDurationsMs[0]);
+        var mid2 = mid1.AddMilliseconds(sectorDurationsMs[1]);
+        var end = mid2.AddMilliseconds(sectorDurationsMs[2]);
+
+        const int pointCount = 180;
+        const double centerLat = 50.4371;
+        const double centerLng = 5.9720;
+        const double radiusDeg = 0.0003;
+
+        var totalMs = sectorDurationsMs.Sum();
+        var interval = totalMs / pointCount;
+
+        var points = new List<GPSPointDTO>();
+        for (int i = 0; i < pointCount; i++)
+        {
+            double angle = 2 * Math.PI * i / pointCount;
+            points.Add(new GPSPointDTO
+                {
+                    Latitude = centerLat + radiusDeg * Math.Cos(angle),
+                    Longitude = centerLng + radiusDeg * Math.Sin(angle),
+                    Timestamp = start.AddMilliseconds(i * interval)
+                });
+        }
+
+        var lap = new CreateLapTimeWithGPSRequest
+            {
+                HeatID = HeatID,
+                LapNumber = currentLap++,
+                StartTime = start,
+                EndTime = end,
+                GPSPoints = points,
+                MiniSectors = new List<MiniSectorDTO>
+            {
+                new MiniSectorDTO { SectorNumber = 1, StartTime = start, EndTime = mid1 },
+                new MiniSectorDTO { SectorNumber = 2, StartTime = mid1, EndTime = mid2 },
+                new MiniSectorDTO { SectorNumber = 3, StartTime = mid2, EndTime = end }
+            }
+            };
+
+        await SubmitFakeLapToApi(lap);
+    }
+
+    private async Task SubmitFakeLapToApi(CreateLapTimeWithGPSRequest lap)
+    {
+        try
+        {
+            var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                ErrorMessage = "❌ Not logged in.";
+                return;
+            }
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/gps/lap")
+                {
+                    Content = JsonContent.Create(lap)
+                };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var response = await Http.SendAsync(request);
+
+            ErrorMessage = response.IsSuccessStatusCode
+                ? "✅ Fake lap submitted!"
+                : $"❌ Failed to submit: {response.StatusCode}";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"HTTP error: {ex.Message}";
+        }
     }
 }

@@ -41,8 +41,25 @@ namespace API.Controllers
         [HttpPost("lap")]
         public async Task<ActionResult<LapTimeDTO>> SubmitLap([FromBody] CreateLapTimeWithGPSRequest request)
         {
+            if (!ModelState.IsValid)
+            {
+                var errorMessages = ModelState.Values.SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                var fullError = "Invalid model:\n" + string.Join("\n", errorMessages);
+                System.Diagnostics.Debug.WriteLine(fullError); // ⬅️ TEMPORARY: See logs
+                return BadRequest(fullError);
+            }
+
+            if (request.GPSPoints == null || !request.GPSPoints.Any())
+                return BadRequest("❌ GPSPoints missing.");
+
+            if (request.MiniSectors == null || request.MiniSectors.Count != 3)
+                return BadRequest("❌ Exactly 3 MiniSectors required.");
+
             var result = await _lapTimeService.AddLapTimeWithGPSAsync(request);
-            return result == null ? BadRequest("Heat not found.") : Ok(result);
+            return result == null ? BadRequest("❌ Heat not found or not created.") : Ok(result);
         }
     }
 }

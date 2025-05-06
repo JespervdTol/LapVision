@@ -6,11 +6,16 @@
 
 <h3>My Profile</h3>
 
-@if (profile == null)
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger">@ErrorMessage</div>
+}
+
+@if (profile == null && string.IsNullOrEmpty(ErrorMessage))
 {
     <p>Loading profile...</p>
 }
-else
+else if (profile != null)
 {
     <div class="profile-card">
         <label for="fileInput">
@@ -34,15 +39,19 @@ else
 
 @code {
     private UserProfileDTO? profile;
+    private string? ErrorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
-        if (string.IsNullOrEmpty(token))
-            return;
-
         try
         {
+            var token = await GetTokenAsync();
+            if (string.IsNullOrEmpty(token))
+            {
+                ErrorMessage = "You are not logged in.";
+                return;
+            }
+
             var request = new HttpRequestMessage(HttpMethod.Get, "api/profile");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -51,11 +60,26 @@ else
             {
                 profile = await response.Content.ReadFromJsonAsync<UserProfileDTO>();
             }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                ErrorMessage = $"Error loading profile: {response.StatusCode} - {error}";
+                System.Diagnostics.Debug.WriteLine($"[Profile] Failed response: {response.StatusCode} - {error}");
+            }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error fetching profile: {ex.Message}");
+            ErrorMessage = $"Unexpected error: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[Profile] Exception: {ex.Message}");
         }
+    }
+
+    private async Task<string?> GetTokenAsync()
+    {
+        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+        return !string.IsNullOrEmpty(token)
+            ? token
+            : await JS.InvokeAsync<string>("sessionStorage.getItem", "token");
     }
 
     private async Task HandleFileUpload(InputFileChangeEventArgs e)
@@ -74,17 +98,27 @@ else
         await stream.CopyToAsync(ms);
         var imageBytes = ms.ToArray();
 
-        var token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
-        var request = new HttpRequestMessage(HttpMethod.Put, "api/profile/picture")
+        var token = await GetTokenAsync();
+        if (string.IsNullOrEmpty(token))
         {
-            Content = JsonContent.Create(imageBytes)
-        };
+            ErrorMessage = "Session expired. Please log in again.";
+            return;
+        }
+
+        var request = new HttpRequestMessage(HttpMethod.Put, "api/profile/picture")
+            {
+                Content = JsonContent.Create(imageBytes)
+            };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var response = await Http.SendAsync(request);
         if (response.IsSuccessStatusCode)
         {
             profile!.ProfilePicture = Convert.ToBase64String(imageBytes);
+        }
+        else
+        {
+            ErrorMessage = $"Failed to upload image: {response.StatusCode}";
         }
     }
 }

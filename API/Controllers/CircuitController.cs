@@ -3,6 +3,7 @@ using Infrastructure.Persistence;
 using Contracts.DTO.Circuit;
 using Microsoft.EntityFrameworkCore;
 using Model.Entities;
+using Contracts.DTO.GPS;
 
 namespace API.Controllers
 {
@@ -55,19 +56,72 @@ namespace API.Controllers
             return Ok(dto);
         }
 
+        [HttpPost]
+        public async Task<ActionResult<CircuitDTO>> CreateCircuit([FromBody] CircuitDTO dto)
+        {
+            var circuit = new Circuit
+            {
+                Name = string.IsNullOrWhiteSpace(dto.Name) ? $"Circuit {DateTime.UtcNow:yyyy-MM-dd HH:mm}" : dto.Name,
+                Location = dto.Location,
+                StartLineLat = dto.StartLineLat,
+                StartLineLng = dto.StartLineLng,
+                RadiusMeters = dto.RadiusMeters
+            };
+
+            _context.Circuits.Add(circuit);
+            await _context.SaveChangesAsync();
+
+            dto.CircuitID = circuit.CircuitID;
+            return CreatedAtAction(nameof(GetById), new { id = circuit.CircuitID }, dto);
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] CircuitDTO dto)
         {
+            if (!ModelState.IsValid)
+            {
+                var errors = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                return BadRequest($"Invalid model: {errors}");
+            }
+
             var circuit = await _context.Circuits.FindAsync(id);
             if (circuit == null)
                 return NotFound();
 
+            circuit.Name = dto.Name;
+            circuit.Location = dto.Location;
             circuit.StartLineLat = dto.StartLineLat;
             circuit.StartLineLng = dto.StartLineLng;
             circuit.RadiusMeters = dto.RadiusMeters;
 
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        [HttpPost("{circuitId}/layout")]
+        public async Task<IActionResult> SaveLayout(int circuitId, [FromBody] List<GPSPointDTO> layoutPoints)
+        {
+            var circuit = await _context.Circuits
+                .Include(c => c.LayoutPoints)
+                .FirstOrDefaultAsync(c => c.CircuitID == circuitId);
+
+            if (circuit == null)
+                return NotFound();
+
+            _context.CircuitLayoutPoints.RemoveRange(circuit.LayoutPoints);
+
+            var newPoints = layoutPoints.Select((p, i) => new CircuitLayoutPoint
+            {
+                CircuitID = circuitId,
+                Latitude = p.Latitude,
+                Longitude = p.Longitude,
+                OrderIndex = i
+            }).ToList();
+
+            await _context.CircuitLayoutPoints.AddRangeAsync(newPoints);
+            await _context.SaveChangesAsync();
+
+            return Ok("✅ Track layout saved!");
         }
     }
 }

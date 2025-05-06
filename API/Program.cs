@@ -1,57 +1,57 @@
 ﻿using Infrastructure.Persistence;
 using Model.Entities;
-using Model.Enums;
 using API.Services;
+using API.Helpers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
+using System.Diagnostics;
+
+var sw = Stopwatch.StartNew();
 
 var builder = WebApplication.CreateBuilder(args);
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] Builder created in {sw.ElapsedMilliseconds} ms");
 
+sw.Restart();
 builder.Configuration
-    .SetBasePath(AppContext.BaseDirectory)
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
 
-builder.WebHost.ConfigureKestrel((context, options) =>
+var certPath = Path.Combine(AppContext.BaseDirectory, "cert.pfx");
+var certPassword = builder.Configuration["Kestrel:Certificates:Default:Password"];
+
+builder.WebHost.ConfigureKestrel(options =>
 {
-    var config = context.Configuration;
-    var httpPort = config.GetValue("ASPNETCORE_HTTP_PORT", 5082);
-    var httpsPort = config.GetValue("ASPNETCORE_HTTPS_PORT", 7234);
-    var certPath = Path.Combine(AppContext.BaseDirectory, "cert.pfx");
-    var certPassword = "jtol123@";
+    var httpPort = builder.Configuration.GetValue("ASPNETCORE_HTTP_PORT", 5082);
+    var httpsPort = builder.Configuration.GetValue("ASPNETCORE_HTTPS_PORT", 7234);
 
-    System.Diagnostics.Debug.WriteLine($"🌐 Binding ports: HTTP={httpPort}, HTTPS={httpsPort}");
     options.ListenAnyIP(httpPort);
 
-    if (File.Exists(certPath))
+    if (File.Exists(certPath) && !string.IsNullOrEmpty(certPassword))
     {
-        System.Diagnostics.Debug.WriteLine("✅ Certificate found. Enabling HTTPS.");
-        options.ListenAnyIP(httpsPort, listenOptions =>
-        {
-            listenOptions.UseHttps(certPath, certPassword);
-        });
-    }
-    else
-    {
-        System.Diagnostics.Debug.WriteLine("⚠️ Certificate not found. HTTPS will be unavailable.");
+        options.ListenAnyIP(httpsPort, listen => listen.UseHttps(certPath, certPassword));
     }
 });
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] Config loaded and Kestrel configured in {sw.ElapsedMilliseconds} ms");
 
+sw.Restart();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-System.Diagnostics.Debug.WriteLine($"🧪 DB connection string: {connectionString}");
-
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new InvalidOperationException("❌ Missing DB connection string in appsettings.json.");
-}
-
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
-        mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
-
+{
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableDetailedErrors();
+        options.EnableSensitiveDataLogging();
+    }
+});
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<LapTimeService>();
@@ -59,35 +59,35 @@ builder.Services.AddScoped<LapTimeService>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var jwtConfig = builder.Configuration.GetSection("Jwt");
+        var jwt = builder.Configuration.GetSection("Jwt");
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtConfig["Issuer"],
-            ValidAudience = jwtConfig["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig["Key"]!))
+            ValidIssuer = jwt["Issuer"],
+            ValidAudience = jwt["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!))
         };
     });
 
 builder.Services.AddAuthorization();
 
 builder.Services.AddControllers()
-    .AddJsonOptions(options =>
+    .AddJsonOptions(opts =>
     {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+builder.Services.AddSwaggerGen(c =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "LapVision API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "LapVision API", Version = "v1" });
 
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer eyJhbGci...'",
+        Description = "JWT using Bearer. Example: 'Bearer {token}'",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
@@ -95,16 +95,12 @@ builder.Services.AddSwaggerGen(options =>
         BearerFormat = "JWT"
     });
 
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
@@ -116,58 +112,49 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] Services registered in {sw.ElapsedMilliseconds} ms");
 
+sw.Restart();
 var app = builder.Build();
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] App built in {sw.ElapsedMilliseconds} ms");
 
+sw.Restart();
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+    var context = scope.ServiceProvider.GetRequiredService<DataContext>();
 
-    try
+    if (!context.Database.CanConnect())
     {
-        dbContext.Database.Migrate();
-        System.Diagnostics.Debug.WriteLine(dbContext.Database.CanConnect()
-            ? "✅ DB connection successful."
-            : "❌ DB connection failed!");
-    }
-    catch (Exception ex)
-    {
-        System.Diagnostics.Debug.WriteLine($"❌ DB connection error: {ex.Message}");
-        throw;
-    }
+        System.Diagnostics.Debug.WriteLine("[Startup] 🛠️ Database not found — running migrations and seeding...");
 
-    if (!dbContext.Accounts.Any())
-    {
-        System.Diagnostics.Debug.WriteLine("🛠 No accounts found. Seeding default Admin user...");
-
-        string adminEmail = "admin@lapvision.com";
-        string adminUsername = "admin";
-        string adminPassword = "Admin123!";
-
-        var passwordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword);
-
-        var adminAccount = new Account
+        if (app.Environment.IsDevelopment())
         {
-            Email = adminEmail,
-            Username = adminUsername,
-            PasswordHash = passwordHash,
-            Role = UserRole.Admin,
-            CreatedAt = DateTime.UtcNow,
-            Person = new Person
+            if (context.Database.GetPendingMigrations().Any())
             {
-                FirstName = "System",
-                LastName = "Admin",
-                Prefix = "",
-                DateOfBirth = new DateOnly(2003, 9, 30)
+                var migrateSw = Stopwatch.StartNew();
+                context.Database.Migrate();
+                migrateSw.Stop();
+                System.Diagnostics.Debug.WriteLine($"[Startup] Database migrated in {migrateSw.ElapsedMilliseconds} ms");
             }
-        };
+        }
 
-        dbContext.Accounts.Add(adminAccount);
-        dbContext.SaveChanges();
-
-        System.Diagnostics.Debug.WriteLine($"✅ Default admin created: {adminEmail} / {adminPassword}");
+        var seedSw = Stopwatch.StartNew();
+        if (!context.Accounts.Any(a => a.Role == Model.Enums.UserRole.Admin))
+        {
+            DataSeeder.SeedAdmin(context, builder.Configuration);
+        }
+        seedSw.Stop();
+        System.Diagnostics.Debug.WriteLine($"[Startup] Admin seeding (if needed) took {seedSw.ElapsedMilliseconds} ms");
+    }
+    else
+    {
+        System.Diagnostics.Debug.WriteLine("[Startup] ✅ Database already exists. Skipping migration and seeding.");
     }
 }
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] DB setup complete in {sw.ElapsedMilliseconds} ms");
 
 if (app.Environment.IsDevelopment())
 {
@@ -175,22 +162,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.Use(async (context, next) =>
-{
-    if (context.Request.IsHttps || !context.Request.Host.Port.HasValue || context.Request.Host.Port != 5082)
-    {
-        await next();
-    }
-    else
-    {
-        context.Request.Scheme = "http";
-        await next();
-    }
-});
-
 app.UseCors("AllowAll");
-//app.UseHttpsRedirection();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
+
+System.Diagnostics.Debug.WriteLine("[Startup] API ready. Listening for requests...");
+
 app.Run();

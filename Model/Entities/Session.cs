@@ -17,7 +17,6 @@ namespace Model.Entities
         [ForeignKey(nameof(CircuitID))]
         public Circuit Circuit { get; set; }
 
-        // ✅ Link to Account
         [Required]
         public int AccountID { get; set; }
 

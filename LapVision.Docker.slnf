@@ -5,7 +5,8 @@
       "API\\API.csproj",
       "Infrastructure\\Infrastructure.csproj",
       "Model\\Model.csproj",
-      "Contracts\\Contracts.csproj"
+      "Contracts\\Contracts.csproj",
+      "CoachWeb\\CoachWeb.csproj"
     ]
   }
 }

@@ -9,13 +9,16 @@ namespace Model.Entities
 
         [Required]
         [MaxLength(100)]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
         [MaxLength(255)]
-        public string Location { get; set; }
+        public string Location { get; set; } = "";
 
         public double StartLineLat { get; set; }
         public double StartLineLng { get; set; }
+
         public double RadiusMeters { get; set; } = 10;
+
+        public ICollection<CircuitLayoutPoint> LayoutPoints { get; set; } = new List<CircuitLayoutPoint>();
     }
 }
