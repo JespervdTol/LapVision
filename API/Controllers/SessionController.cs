@@ -1,10 +1,10 @@
-﻿using Contracts.DTO.Session;
-using Contracts.DTO.Heat;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using API.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using Contracts.DTO.LapTime;
+using Contracts.App.DTO.Heat;
+using Contracts.App.DTO.LapTime;
+using Contracts.App.DTO.Session;
 
 namespace API.Controllers
 {

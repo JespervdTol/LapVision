@@ -1,5 +1,5 @@
-﻿using CoachWeb.Models.Account;
-using CoachWeb.Services.Interfaces;
+﻿using CoachWeb.Services.Interfaces;
+using Contracts.CoachWeb.ViewModels.Account;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;

@@ -1,11 +1,11 @@
 ﻿using API.Helpers.Mappers;
-using Contracts.DTO.Session;
-using Contracts.DTO.Heat;
-using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Model.Entities;
-using Contracts.DTO.GPS;
-using Contracts.DTO.LapTime;
+using Infrastructure.App.Persistence;
+using Contracts.App.DTO.GPS;
+using Contracts.App.DTO.Heat;
+using Contracts.App.DTO.LapTime;
+using Contracts.App.DTO.Session;
 
 namespace API.Services
 {

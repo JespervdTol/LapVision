@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using API.Services;
-using Contracts.DTO.Auth;
 using API.Helpers.Mappers;
+using Contracts.App.DTO.Auth;
 
 namespace API.Controllers
 {

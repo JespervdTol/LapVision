@@ -1,5 +1,5 @@
-﻿using Contracts.DTO.Heat;
-using Contracts.DTO.LapTime;
+﻿using Contracts.App.DTO.Heat;
+using Contracts.App.DTO.LapTime;
 using Model.Entities;
 
 namespace API.Helpers.Mappers

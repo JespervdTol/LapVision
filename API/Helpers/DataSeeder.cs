@@ -1,4 +1,4 @@
-﻿using Infrastructure.Persistence;
+﻿using Infrastructure.App.Persistence;
 using Model.Entities;
 using Model.Enums;
 

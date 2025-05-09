@@ -1,4 +1,4 @@
-﻿using Contracts.DTO.GPS;
+﻿using Contracts.App.DTO.GPS;
 using Model.Entities;
 
 namespace API.Helpers.Mappers

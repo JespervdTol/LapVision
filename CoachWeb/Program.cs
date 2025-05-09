@@ -1,7 +1,7 @@
-﻿using CoachWeb.Infrastructure.Interfaces;
-using CoachWeb.Infrastructure.Repositories;
-using CoachWeb.Services;
+﻿using CoachWeb.Services;
 using CoachWeb.Services.Interfaces;
+using Infrastructure.CoachWeb.Interfaces;
+using Infrastructure.CoachWeb.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +15,8 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 builder.Services.AddAuthentication("CoachAuth")
     .AddCookie("CoachAuth", options =>

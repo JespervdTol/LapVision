@@ -1,4 +1,4 @@
-using CoachWeb.Models;
+using Contracts.CoachWeb.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using System.Security.Claims;

@@ -1,5 +1,4 @@
-﻿using Infrastructure.Persistence;
-using Model.Entities;
+﻿using Model.Entities;
 using Model.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -7,9 +6,10 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Contracts.DTO.Auth;
 using API.Helpers.Mappers;
 using API.Helpers;
+using Infrastructure.App.Persistence;
+using Contracts.App.DTO.Auth;
 
 namespace API.Services
 {

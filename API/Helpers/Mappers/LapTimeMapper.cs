@@ -1,6 +1,6 @@
-﻿using Contracts.DTO.Circuit;
-using Contracts.DTO.GPS;
-using Contracts.DTO.LapTime;
+﻿using Contracts.App.DTO.LapTime;
+using Contracts.App.DTO.Circuit;
+using Contracts.App.DTO.GPS;
 using Model.Entities;
 
 namespace API.Helpers.Mappers

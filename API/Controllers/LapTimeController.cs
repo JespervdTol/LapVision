@@ -1,7 +1,7 @@
-﻿using Contracts.DTO.LapTime;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using API.Services;
 using System.Security.Claims;
+using Contracts.App.DTO.LapTime;
 
 namespace API.Controllers
 {

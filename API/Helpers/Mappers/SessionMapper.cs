@@ -1,6 +1,6 @@
-﻿using Contracts.DTO.Session;
-using Contracts.DTO.Heat;
-using Model.Entities;
+﻿using Model.Entities;
+using Contracts.App.DTO.Heat;
+using Contracts.App.DTO.Session;
 
 namespace API.Helpers.Mappers
 {

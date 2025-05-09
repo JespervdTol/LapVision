@@ -1,8 +1,8 @@
 ﻿using API.Helpers.Mappers;
-using Contracts.DTO.Circuit;
-using Contracts.DTO.GPS;
-using Contracts.DTO.LapTime;
-using Infrastructure.Persistence;
+using Contracts.App.DTO.LapTime;
+using Contracts.App.DTO.Circuit;
+using Contracts.App.DTO.GPS;
+using Infrastructure.App.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Model.Entities;
 

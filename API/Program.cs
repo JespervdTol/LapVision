@@ -1,5 +1,4 @@
-﻿using Infrastructure.Persistence;
-using Model.Entities;
+﻿using Model.Entities;
 using API.Services;
 using API.Helpers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,6 +8,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
 using System.Diagnostics;
+using Infrastructure.App.Persistence;
 
 var sw = Stopwatch.StartNew();
 

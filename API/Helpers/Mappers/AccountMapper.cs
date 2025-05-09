@@ -1,4 +1,4 @@
-﻿using Contracts.DTO.Auth;
+﻿using Contracts.App.DTO.Auth;
 using Model.Entities;
 
 namespace API.Helpers.Mappers

@@ -1,5 +1,5 @@
-﻿using Contracts.DTO.GPS;
-using Contracts.DTO.LapTime;
+﻿using Contracts.App.DTO.GPS;
+using Contracts.App.DTO.LapTime;
 using Model.Entities;
 
 namespace API.Helpers.Mappers

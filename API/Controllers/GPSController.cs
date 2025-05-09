@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using API.Services;
-using Contracts.DTO.LapTime;
-using Contracts.DTO.GPS;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Contracts.App.DTO.GPS;
+using Contracts.App.DTO.LapTime;
 
 namespace API.Controllers
 {

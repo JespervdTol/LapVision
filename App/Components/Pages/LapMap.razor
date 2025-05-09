@@ -1,11 +1,11 @@
 ﻿@page "/lapmap/{LapTimeID:int}"
 @inject HttpClient Http
 @inject IJSRuntime JS
-@using Contracts.DTO.GPS
-@using Contracts.DTO.LapTime
-@using Contracts.DTO.Circuit
 @using System.Net.Http.Headers
 @using System.Net.Http.Json
+@using Contracts.App.DTO.Circuit
+@using Contracts.App.DTO.GPS
+@using Contracts.App.DTO.LapTime
 
 <h3 class="lap-title">📍 Lap Map</h3>
 

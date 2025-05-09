@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Infrastructure.Persistence;
-using Contracts.DTO.Circuit;
 using Microsoft.EntityFrameworkCore;
 using Model.Entities;
-using Contracts.DTO.GPS;
+using Infrastructure.App.Persistence;
+using Contracts.App.DTO.Circuit;
+using Contracts.App.DTO.GPS;
 
 namespace API.Controllers
 {

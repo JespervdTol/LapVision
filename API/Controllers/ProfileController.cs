@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using Contracts.DTO.Auth;
+using Infrastructure.App.Persistence;
+using Contracts.App.DTO.Auth;
 
 namespace API.Controllers
 {
