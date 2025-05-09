@@ -1,0 +1,74 @@
+﻿@page "/register"
+@namespace App.Pages
+@using Contracts.App.DTO.Auth
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="register-container">
+    <div class="register-title">Create Account</div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger">@ErrorMessage</div>
+    }
+
+    <EditForm Model="registerRequest" OnValidSubmit="HandleRegister" class="register-form">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <InputText class="form-control" @bind-Value="registerRequest.Email" placeholder="Email" />
+        <InputText class="form-control" @bind-Value="registerRequest.Username" placeholder="Username" />
+        <InputText class="form-control" @bind-Value="registerRequest.Password" type="password" placeholder="Password" />
+
+        <InputText class="form-control" @bind-Value="registerRequest.FirstName" placeholder="First Name" />
+        <InputText class="form-control" @bind-Value="registerRequest.Prefix" placeholder="Prefix (optional)" />
+        <InputText class="form-control" @bind-Value="registerRequest.LastName" placeholder="Last Name" />
+        <InputDate class="form-control" @bind-Value="registerRequest.DateOfBirth" />
+
+        <label class="mb-1">Role:</label>
+        <InputSelect class="form-control" @bind-Value="registerRequest.Role">
+            <option value="Driver">Driver</option>
+            <option value="Coach">Coach</option>
+        </InputSelect>
+
+        <button class="btn btn-register mt-3" type="submit">Register</button>
+    </EditForm>
+
+    <div class="register-footer">
+        Already have an account? <a href="/">Login here</a>
+    </div>
+</div>
+
+@code {
+    private RegisterRequest registerRequest = new()
+        {
+            DateOfBirth = DateOnly.FromDateTime(DateTime.Today.AddYears(-18))
+        };
+
+    private string? ErrorMessage;
+
+    private async Task HandleRegister()
+    {
+        ErrorMessage = null;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/auth/register", registerRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+                await JS.InvokeVoidAsync("localStorage.setItem", "token", result?.Token);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                ErrorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error: {ex.Message}";
+        }
+    }
+}

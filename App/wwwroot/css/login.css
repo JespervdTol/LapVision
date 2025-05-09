@@ -1,0 +1,66 @@
+﻿@import url('./root.css');
+
+.login-container {
+    max-width: 400px;
+    margin: auto;
+    margin-top: 10vh;
+    padding: 2rem;
+    border-radius: 16px;
+    background-color: var(--background-dark);
+    box-shadow: 0 0 12px var(--box-shadow-dark);
+    color: var(--text-light);
+}
+
+.login-logo {
+    display: block;
+    margin: 0 auto 1.5rem auto;
+    width: 150px;
+}
+
+.login-title {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--primary-red);
+}
+
+.login-form .form-control {
+    margin-bottom: 1rem;
+    background-color: var(--input-background);
+    color: var(--text-light);
+    border: 1px solid var(--border-color);
+}
+
+    .login-form .form-control::placeholder {
+        color: var(--placeholder-color);
+    }
+
+.btn-login {
+    width: 100%;
+    background-color: var(--primary-red);
+    border: none;
+    color: var(--text-light);
+}
+
+    .btn-login:hover {
+        background-color: var(--primary-red-hover);
+    }
+
+.login-footer {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+    .login-footer a {
+        color: var(--link-color);
+        text-decoration: none;
+    }
+
+.alert-danger {
+    background-color: var(--alert-red);
+    color: var(--text-light);
+    padding: 0.75rem;
+    border-radius: 6px;
+    text-align: center;
+}

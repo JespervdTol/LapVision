@@ -1,0 +1,74 @@
+﻿@model List<Contracts.CoachWeb.ViewModels.Report.DriverReportViewModel>
+@{
+    ViewData["Title"] = "Driver Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var drivers = ViewBag.Drivers as List<Contracts.CoachWeb.ViewModels.Report.DriverDropdownViewModel>;
+}
+
+<link rel="stylesheet" href="~/css/root.css" />
+<link rel="stylesheet" href="~/css/driverreport.css" />
+
+<div class="container mt-4">
+    <h2>Driver Report</h2>
+
+    <form asp-controller="Report" asp-action="Driver" method="get" class="mb-4">
+        <select name="personId" class="form-select" onchange="this.form.submit()">
+            <option disabled selected>Select a driver</option>
+            @foreach (var driver in drivers ?? new())
+            {
+                <option value="@driver.PersonID">@driver.FullName</option>
+            }
+        </select>
+    </form>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-warning">No sessions found for this driver.</div>
+    }
+    else
+    {
+        foreach (var session in Model)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Session @session.SessionID</strong> |
+                    <span>@session.CircuitName</span> |
+                    <span class="text-muted">@session.SessionDate.ToString("dd MMM yyyy")</span>
+                </div>
+                <div class="card-body">
+                    @foreach (var heat in session.Heats)
+                    {
+                        <div class="mb-3">
+                            <h5>Heat @heat.HeatNumber</h5>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Lap</th>
+                                        <th>Total Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var lap in heat.Laps)
+                                    {
+                                        <tr>
+                                            <td>@lap.LapNumber</td>
+                                            @{
+                                                string formatted = lap.TotalTime.HasValue
+                                                ? (lap.TotalTime.Value.TotalMinutes >= 1
+                                                ? $"{(int)lap.TotalTime.Value.TotalMinutes}:{lap.TotalTime.Value.Seconds:D2}.{lap.TotalTime.Value.Milliseconds:D3}"
+                                                : $"{lap.TotalTime.Value.Seconds}.{lap.TotalTime.Value.Milliseconds:D3}")
+                                                : "N/A";
+                                            }
+                                            <td>@formatted</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>

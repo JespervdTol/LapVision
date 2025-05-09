@@ -1,0 +1,161 @@
+﻿@page "/"
+@using Contracts.App.DTO.Auth
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using System.Text.Json
+
+@if (!isCheckingToken)
+{
+    <div class="login-container">
+        <img src="~/images/logo_bottom.png" alt="LapVision Logo" class="login-logo" />
+        <div class="login-title">Login</div>
+
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <div class="alert alert-danger">@ErrorMessage</div>
+        }
+
+        <div class="form-group">
+            <label for="email">Email or Username</label>
+            <input type="text" id="email" class="form-control" @bind="loginRequest.Identifier" placeholder="Email or Username" />
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-control" @bind="loginRequest.Password" placeholder="Password" />
+        </div>
+
+        <div class="form-check mt-2">
+            <input type="checkbox" id="rememberMe" class="form-check-input" @bind="RememberMe" />
+            <label for="rememberMe" class="form-check-label">Remember Me</label>
+        </div>
+
+        <button class="btn btn-login mt-3" @onclick="HandleLogin">Login</button>
+
+        <div class="login-footer">
+            Don't have an account? <a href="/register">Register here</a>
+        </div>
+
+        @if (isTokenExpired)
+        {
+            <div class="alert alert-warning mt-3">
+                Your login expired to keep your personal information safe! Please log back in.
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private LoginRequest loginRequest = new();
+    private string? ErrorMessage;
+    private bool RememberMe = false;
+    private bool isTokenExpired = false;
+    private bool isCheckingToken = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string? token = await JS.InvokeAsync<string>("localStorage.getItem", "token");
+        if (string.IsNullOrEmpty(token))
+            token = await JS.InvokeAsync<string>("sessionStorage.getItem", "token");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            System.Diagnostics.Debug.WriteLine($"[Login] Token found: {token}");
+
+            if (IsTokenExpired(token))
+            {
+                System.Diagnostics.Debug.WriteLine("[Login] Token expired. Clearing storage.");
+                isTokenExpired = true;
+                await JS.InvokeVoidAsync("localStorage.removeItem", "token");
+                await JS.InvokeVoidAsync("sessionStorage.removeItem", "token");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[Login] ✅ Token valid. Redirecting to /home...");
+                if (!Navigation.Uri.EndsWith("/home", StringComparison.OrdinalIgnoreCase))
+                {
+                    Navigation.NavigateTo("/home", forceLoad: true);
+                    return;
+                }
+            }
+        }
+
+        isCheckingToken = false;
+    }
+
+    private async Task HandleLogin()
+    {
+        ErrorMessage = null;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/auth/login", loginRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+                if (!string.IsNullOrEmpty(result?.Token))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Login] Token received: {result?.Token}");
+
+                    if (RememberMe)
+                    {
+                        await JS.InvokeVoidAsync("localStorage.setItem", "token", result.Token);
+                        System.Diagnostics.Debug.WriteLine("[Login] Token saved to localStorage (Remember Me checked).");
+                    }
+                    else
+                    {
+                        await JS.InvokeVoidAsync("sessionStorage.setItem", "token", result.Token);
+                        System.Diagnostics.Debug.WriteLine("[Login] Token saved to sessionStorage (Remember Me not checked).");
+                    }
+
+                    Navigation.NavigateTo("/home", forceLoad: true);
+                }
+            }
+            else
+            {
+                ErrorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private bool IsTokenExpired(string jwt)
+    {
+        try
+        {
+            var parts = jwt.Split('.');
+            if (parts.Length != 3)
+                return true;
+
+            var payload = parts[1];
+            payload += new string('=', (4 - payload.Length % 4) % 4);
+
+            var bytes = Convert.FromBase64String(payload);
+            var json = System.Text.Encoding.UTF8.GetString(bytes);
+            var payloadDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+
+            if (payloadDict != null && payloadDict.TryGetValue("exp", out var expElement))
+            {
+                long unixExp = expElement.GetInt64();
+                var expiration = DateTimeOffset.FromUnixTimeSeconds(unixExp).UtcDateTime;
+
+                System.Diagnostics.Debug.WriteLine($"🔍 Token expiration (UTC): {expiration}");
+                System.Diagnostics.Debug.WriteLine($"⏰ Current UTC time: {DateTime.UtcNow}");
+                System.Diagnostics.Debug.WriteLine($"⏰ Current Local time: {DateTime.Now}");
+                System.Diagnostics.Debug.WriteLine($"💣 Expired? {DateTime.UtcNow > expiration}");
+
+                return DateTime.UtcNow > expiration;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"❌ Failed to parse token: {ex.Message}");
+            return true;
+        }
+    }
+}
