@@ -5,49 +5,54 @@
 ```
 LapVision/
 │
-├── API/                         - Web API (Controllers, Application Services)
-│   ├── Controllers/             - Entry point for HTTP requests
-│   ├── Services/                - Application logic (AuthService, LapTimeService, etc.)
-│   ├── Helpers/
-│   │   └── Mappers/             - Static mapping logic (DTO ↔ Entity, Enums)
-│   ├── Interfaces/              - IService interfaces for testability
-│   └── Program.cs               - API configuration and DI setup
+├── API/                         - ASP.NET Core Web API
+│   ├── Controllers/             - HTTP endpoints (Auth, GPS, Session, etc.)
+│   ├── Services/                - Application-level services (Auth, LapTime, Session)
+│   ├── Helpers/                 - Mappers, default image, seeders
+│   ├── API.http                 - API test requests
+│   └── Program.cs               - API startup and configuration
 │
-├── App/                         - MAUI Blazor Hybrid Client (Mobile App)
-│   ├── Pages/                   - Razor UI (HeatPage, SessionList, etc.)
-│   ├── Resources/               - Fonts, images, splash, etc.
-│   └── App.xaml.cs              - App entry point and navigation
+├── App/                         - MAUI Blazor Hybrid Client
+│   ├── wwwroot/                 - Static assets (CSS, JS, favicon)
+│   ├── Components/              - Razor components (Layout, Pages, Routing)
+│   ├── Platforms/               - Target platforms (Android, iOS, Windows, etc.)
+│   ├── Resources/               - App icon, fonts, images, raw, splash
+│   ├── App.xaml & MainPage.xaml - UI entry points
+│   └── MauiProgram.cs           - DI and startup config
 │
 ├── CoachWeb/                    - ASP.NET MVC Web App for Coach Dashboard
-│   ├── Controllers/             - MVC controllers (e.g., AccountController)
-│   ├── Services/                - Domain-facing logic (e.g., AccountService)
-│   ├── Repositories/            - Manual SQL access (e.g., AccountRepository)
-│   ├── Interfaces/              - IService / IRepository interfaces
-│   ├── Views/                   - Razor Views (e.g., Login.cshtml)
-│   └── Program.cs               - MVC app configuration and DI setup
+│   ├── wwwroot/                 - Static assets (CSS, JS, lib)
+│   ├── Controllers/             - MVC Controllers (Account, Home, Report)
+│   ├── Services/                - CoachWeb logic (AccountService, ReportService)
+│   │   └── Interfaces/          - IService abstractions for testability
+│   ├── Views/                   - Razor views (Account, Home, Report, Shared)
+│   └── Program.cs               - MVC startup and DI configuration
 │
-├── Contracts/                   - Shared data contracts (DTOs and enums)
-│   ├── DTO/                     - Request/Response objects
-│   └── Enums/                   - Serializable enums (e.g., UserRole)
+├── Contracts/                   - Shared DTOs, Enums, ViewModels
+│   ├── App/
+│   │   ├── DTO/                 - Auth, Circuit, GPS, Heat, LapTime, Session DTOs
+│   │   └── Enums/              - Shared enums (UserRole)
+│   └── CoachWeb/
+│       └── ViewModels/          - Account, Report, and Error ViewModels for MVC
 │
-├── Model/                       - Domain Layer (Entities and Domain Services)
-│   ├── Entities/                - Core models (e.g., LapTime, Session, Account)
-│   ├── Services/                - Pure business logic (no EF, no config)
-│   └── Enums/                   - Domain-level enums
+├── Infrastructure/              - Data persistence and access
+│   ├── App/
+│   │   └── Persistence/         - EF Core DbContext and Migrations for API
+│   └── CoachWeb/
+│       ├── Interfaces/          - Repositories contracts (e.g., IAccountRepository)
+│       └── Repositories/        - Raw SQL Repositories (e.g., ReportRepository)
 │
-├── Infrastructure/              - Infrastructure Layer (EF Core persistence for API only)
-│   └── Persistence/
-│       ├── DataContext.cs       - EF Core DbContext
-│       └── Migrations/          - EF Core migration files
+├── Model/                       - Domain Layer
+│   ├── Entities/                - Core domain models (LapTime, Session, Account, etc.)
+│   │   └── CoachWeb/            - MVC-specific domain (Account.cs, Person.cs)
+│   └── Enums/                   - Domain enums (e.g., UserRole)
 │
-├── Tests/                       - Unit and integration tests
-│   ├── API.Tests/               - API layer tests with mocked services
-│   ├── CoachWeb.Tests/          - MVC tests using mocked repositories
-│   └── TestUtilities/           - Mocks, fakes, test builders, etc.
+├── Test/                        - Unit testing
+│   └── AccountServiceTests.cs   - Example test class
 │
-├── Dockerfile                   - Docker container setup for API
-├── docker-compose.yml           - Multi-service setup (e.g., API + MySQL)
-└── README.md                    - Project documentation (this file)
+├── Dockerfile                   - Docker setup for API
+├── docker-compose.yml           - Multi-container orchestration
+└── README.md                    - This file
 ```
 
 ---
@@ -55,59 +60,64 @@ LapVision/
 ## Layer Responsibilities
 
 ### App (MAUI Blazor)
-- UI rendering and navigation
-- Talks to API via HTTP and DTOs (from `Contracts`)
-- No access to domain logic or EF
+- Cross-platform UI with Razor + .NET MAUI
+- Uses `HttpClient` to call API
+- Strictly uses DTOs from `Contracts.App.DTO`
+- Does not access domain logic or DB directly
 
 ### API
-- Handles HTTP requests
-- Uses application services to orchestrate logic
-- Maps between DTOs and domain entities
-- Depends on `Model`, `Contracts`, and `Infrastructure`
+- Exposes endpoints for mobile client
+- Contains core application services
+- Maps between domain entities and DTOs (via AutoMapper)
+- Uses EF Core via `Infrastructure.App.Persistence`
 
-### CoachWeb (ASP.NET MVC)
-- Web dashboard for coaches
-- Uses repositories and services (without EF Core)
-- Manually interacts with database (e.g., using MySqlConnector)
-- Depends on `Model` for domain entities
-- Does not call API and does not use DTOs
-
-### Model
-- Contains core domain logic (entities and rules)
-- Does not depend on EF Core or config
-- Referenced by API, CoachWeb, and Infrastructure
-
-### Infrastructure
-- Contains EF Core `DataContext` and migrations (used by API only)
-- Depends on `Model` for entity definitions
+### CoachWeb (MVC)
+- Web dashboard for internal coach use
+- Has own Controllers, Services, Interfaces, Views
+- Uses ViewModels from `Contracts.CoachWeb`
+- Directly queries MySQL via raw SQL repos from `Infrastructure.CoachWeb`
 
 ### Contracts
-- Contains DTOs and shared enums
-- Used by App and API only (not CoachWeb)
-- No dependencies on any other project
+- Cross-layer DTOs, Enums, and ViewModels
+- `App.DTO` for API ↔ App
+- `CoachWeb.ViewModels` for UI rendering
+- No external dependencies
+
+### Infrastructure
+- `App.Persistence` contains EF Core setup for API
+- `CoachWeb` provides interfaces and SQL implementations for data access
+- Decoupled from services using clean interfaces
+
+### Model
+- Pure domain entities and enums
+- Shared by API, Infrastructure, and CoachWeb
+- No framework dependencies
+
+### Test
+- Contains unit tests (e.g., for services)
+- Uses mocks (e.g., Moq) to isolate dependencies
 
 ---
 
 ## Communication Flow
 
 ```
-[MAUI App]
+[App (MAUI)]
     ↓
-HttpClient (DTOs from Contracts)
+HttpClient
     ↓
-[API Controllers]
+[API (Controllers)]
     ↓
 [API Services]
     ↓
-[EF Core DataContext (Infrastructure)]
+[Infrastructure.App.Persistence (EF Core)]
     ↓
 [MySQL]
 
-[CoachWeb MVC]
-    ↔ [Repositories] ↔ [MySQL]
+[CoachWeb (MVC)]
+    ↔ [Infrastructure.CoachWeb.Repositories]
+    ↔ [MySQL]
 ```
-
-App communicates with API using DTOs. CoachWeb connects to DB directly via custom repositories.
 
 ---
 
@@ -117,53 +127,34 @@ App communicates with API using DTOs. CoachWeb connects to DB directly via custo
 |---------------|-------------------------------------|
 | App           | Contracts only                      |
 | API           | Contracts, Model, Infrastructure    |
-| CoachWeb      | Model                               |
+| CoachWeb      | Contracts, Model, Infrastructure    |
 | Infrastructure| Model only                          |
 | Model         | Nothing                             |
-| Contracts     | Nothing                             |
-
----
-
-## Benefits
-
-- Clear separation of concerns
-- MVC site can evolve independently from API
-- CoachWeb is testable and follows SOLID (with interfaces, repositories)
-- Entities are reused without duplication
-- MAUI App uses API as intended, keeping frontends loosely coupled
-
----
-
-## Common Pitfalls to Avoid
-
-- CoachWeb referencing Contracts (DTOs are API-only)
-- CoachWeb using EF Core (uses raw SQL or MySqlConnector instead)
-- App referencing Model directly
-- Logic in Controllers (should be in services)
-- API exposing entities instead of mapping to DTOs
+| Contracts     | Model                               |
+| Test          | Everything (Except App)             |
 
 ---
 
 ## Design Trade-offs
 
-### Dual Frontends: CoachWeb vs App
+### CoachWeb vs App
 
 | Aspect              | CoachWeb (ASP.NET MVC)                                     | App (MAUI Blazor Hybrid)                             |
 |---------------------|------------------------------------------------------------|------------------------------------------------------|
-| **Access Pattern**   | Direct DB access using custom repositories (raw SQL)       | Communicates via API using DTOs                      |
-| **Use Case**         | Internal web dashboard for coaches                         | Cross-platform client app for users                  |
-| **Performance**      | Low-latency direct DB access                               | Slight overhead due to HTTP calls                    |
-| **Testability**      | Easily testable with mockable services & repositories      | Uses mocked HTTP handlers or DI for services         |
-| **Coupling**         | Tightly coupled to DB schema                               | Loosely coupled via API contract (DTOs)              |
-| **Flexibility**      | High control over queries and performance tuning           | Abstracted from DB structure                         |
-| **Security Layer**   | Internal-only; typically on intranet or behind auth        | Exposed API surface with role-based access control   |
-| **Maintenance**      | Manual sync with DB schema (risk of drift from API logic) | Central logic in API; clients stay thinner           |
+| **Access Pattern**   | Direct DB access via raw SQL repos                         | Communicates with API using DTOs                     |
+| **Use Case**         | Internal dashboard for coaches                             | Public-facing cross-platform mobile app              |
+| **Performance**      | High performance via low-level DB access                   | Slightly more overhead due to HTTP + serialization   |
+| **Testability**      | Interfaces for services and repos                          | Injectable services & HttpClient wrappers            |
+| **Security**         | Internal, but should still be guarded                      | API protected with role-based auth                   |
+| **Flexibility**      | Full control over SQL queries                              | Backend encapsulates logic and schema                |
+| **Maintainability**  | Needs schema tracking discipline                          | Centralized logic makes client updates simpler       |
 
+---
 
-### What to Watch For
+## Keep Note
 
-- **Duplicate logic**: Ensure core validation/business rules are placed in the `Model` layer and reused, so both frontends behave consistently.
-- **Schema changes**: Keep CoachWeb in sync with DB schema changes that might otherwise be abstracted by the API.
-- **Security alignment**: Make sure CoachWeb has appropriate access controls, even if internal, and does not bypass logic enforced in the API.
+- Your architecture **clearly separates responsibilities** between UI, logic, data, and domain.
+- Both `App` and `CoachWeb` serve different needs with minimal overlap.
+- Shared contracts avoid duplication while keeping dependencies clean.
 
 Thanks for reading!
