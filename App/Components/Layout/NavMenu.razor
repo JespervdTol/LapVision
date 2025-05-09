@@ -1,6 +1,9 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">App</a>
+        <a class="navbar-brand" href="">LapVision</a>
     </div>
 </div>
 
@@ -23,5 +26,18 @@
                 <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
             </NavLink>
         </div>
+        <div class="nav-item px-3 mt-4">
+            <button class="btn btn-sm btn-danger w-100" @onclick="Logout">
+                <span class="bi bi-box-arrow-right me-1"></span> Logout
+            </button>
+        </div>
     </nav>
 </div>
+
+@code {
+    private async Task Logout()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "token");
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+}

@@ -1,35 +1,54 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0-windowsservercore-ltsc2022 AS base
+﻿# -------- Base Image -------- 
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-windowsservercore-ltsc2022 AS base
 WORKDIR /app
 EXPOSE 5082
 EXPOSE 7234
+EXPOSE 7222
+EXPOSE 5223 
 
+# -------- Build Image --------
 FROM mcr.microsoft.com/dotnet/sdk:8.0-windowsservercore-ltsc2022 AS build
-ARG BUILD_CONFIGURATION=Release
 
-WORKDIR /LapVision
+ARG CONFIGURATION=Release
+WORKDIR /src
 
+# Copy solution and project files
+COPY LapVision.sln ./LapVision.sln
+COPY LapVision.Docker.slnf ./LapVision.Docker.slnf
+COPY API/API.csproj API/
+COPY CoachWeb/CoachWeb.csproj CoachWeb/
+COPY Contracts/Contracts.csproj Contracts/
+COPY Infrastructure/Infrastructure.csproj Infrastructure/
+COPY Model/Model.csproj Model/
+
+# Restore filtered solution
+RUN dotnet restore LapVision.Docker.slnf
+
+# Copy everything
 COPY . .
 
-ENV DOTNET_ROOT="C:\\Program Files\\dotnet"
-ENV PATH="C:\\Windows\\System32;C:\\Program Files\\dotnet;"
+# --- Build API ---
+WORKDIR /src/API
+RUN dotnet publish -c %CONFIGURATION% -o /app/publish/API /p:UseAppHost=false
 
-RUN cmd /C """"C:\Program Files\dotnet\dotnet.exe""" --info || echo dotnet not found, continuing..."
+# --- Build CoachWeb ---
+WORKDIR /src/CoachWeb
+RUN dotnet publish -c %CONFIGURATION% -o /app/publish/CoachWeb /p:UseAppHost=false
 
-RUN cmd /C """"C:\Program Files\dotnet\dotnet.exe""" workload restore || echo Workload restore failed, continuing..."
-RUN cmd /C """"C:\Program Files\dotnet\dotnet.exe""" restore LapVision.sln || echo Restore failed, continuing..."
-
-RUN cmd /C """"C:\Program Files\dotnet\dotnet.exe""" build LapVision.sln -c %BUILD_CONFIGURATION% -o /app/build || echo Build failed, continuing..."
-
-RUN cmd /C """"C:\Program Files\dotnet\dotnet.exe""" publish API/API.csproj -c %BUILD_CONFIGURATION% -o /app/publish/API /p:UseAppHost=false || echo Publish failed, continuing..."
-
+# -------- Runtime Image --------
 FROM base AS final
 WORKDIR /app
 
+# Copy published output
 COPY --from=build /app/publish/API ./API
-COPY API/appsettings.json ./API/appsettings.json
-COPY publish ./App
-COPY entrypoint.ps1 .
+COPY --from=build /app/publish/CoachWeb ./CoachWeb
+
+# Copy any required cert or shared resources
 COPY API/cert.pfx ./cert.pfx
 
+# Entrypoint script (optional)
+COPY entrypoint.ps1 .
+
+# Use PowerShell to launch both apps
 SHELL ["powershell", "-Command"]
 ENTRYPOINT ["powershell", "-File", "entrypoint.ps1"]

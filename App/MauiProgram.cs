@@ -1,5 +1,6 @@
-﻿using Core.Services;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using System.Reflection;
 
 namespace App
 {
@@ -8,6 +9,7 @@ namespace App
         public static MauiApp CreateMauiApp()
         {
             var builder = MauiApp.CreateBuilder();
+
             builder
                 .UseMauiApp<App>()
                 .ConfigureFonts(fonts =>
@@ -17,23 +19,30 @@ namespace App
 
             builder.Services.AddMauiBlazorWebView();
 
-            string apiBaseUrl = DeviceInfo.Current.Platform == DevicePlatform.Android
-                ? "http://10.0.2.2:5082/"
-                : "https://localhost:7234/";
+            var assembly = Assembly.GetExecutingAssembly();
+            using var stream = assembly.GetManifestResourceStream("App.appsettings.Development.json");
+            var config = new ConfigurationBuilder()
+                .AddJsonStream(stream!)
+                .Build();
 
-            System.Diagnostics.Debug.WriteLine($"\uD83C\uDF10 Using API Base URL: {apiBaseUrl}");
+            string baseUrl;
+            var baseUrls = config.GetSection("ApiSettings:BaseUrls");
 
-            builder.Services.AddHttpClient<WeatherService>(client =>
+            if (DeviceInfo.Current.Platform == DevicePlatform.Android)
             {
-                client.BaseAddress = new Uri(apiBaseUrl);
-                client.Timeout = TimeSpan.FromSeconds(10);
-            })
-            .ConfigurePrimaryHttpMessageHandler(() =>
+                baseUrl = DeviceInfo.DeviceType == DeviceType.Virtual
+                    ? baseUrls["Emulator"]
+                    : baseUrls["PhysicalAndroid"];
+            }
+            else
             {
-                return new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-                };
+                baseUrl = baseUrls["Windows"];
+            }
+
+            builder.Services.AddScoped(sp => new HttpClient
+            {
+                BaseAddress = new Uri(baseUrl),
+                Timeout = TimeSpan.FromSeconds(10)
             });
 
 #if DEBUG
@@ -41,46 +50,7 @@ namespace App
             builder.Logging.AddDebug();
 #endif
 
-            var app = builder.Build();
-
-            Task.Run(() => CheckApiConnection(app.Services));
-
-            return app;
-        }
-
-        private static async void CheckApiConnection(IServiceProvider services)
-        {
-            var weatherService = services.GetRequiredService<WeatherService>();
-
-            await Task.Delay(5000);
-
-            int maxRetries = 5;
-            int delayMs = 3000;
-
-            for (int i = 0; i < maxRetries; i++)
-            {
-                try
-                {
-                    var forecasts = await weatherService.GetWeatherAsync();
-                    if (forecasts.Count > 0)
-                    {
-                        System.Diagnostics.Debug.WriteLine("✅ API is accessible!");
-                        return;
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("❌ API returned 0 items.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"❌ API connection failed: {ex.Message}");
-                }
-
-                await Task.Delay(delayMs);
-            }
-
-            System.Diagnostics.Debug.WriteLine("❌ API is not accessible after multiple attempts!");
+            return builder.Build();
         }
     }
 }

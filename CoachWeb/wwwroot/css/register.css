@@ -1,0 +1,43 @@
+﻿@import url('root.css');
+
+body {
+    background-color: var(--background-dark);
+    color: var(--text-light);
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.auth-container {
+    background-color: var(--input-background);
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px var(--box-shadow-dark);
+    width: 100%;
+    max-width: 450px;
+}
+
+label {
+    color: var(--text-light);
+}
+
+input.form-control {
+    background-color: var(--input-background);
+    color: var(--text-light);
+    border: 1px solid var(--border-color);
+}
+
+    input.form-control::placeholder {
+        color: var(--placeholder-color);
+    }
+
+.btn-primary {
+    background-color: var(--primary-red);
+    border: none;
+}
+
+    .btn-primary:hover {
+        background-color: var(--primary-red-hover);
+    }

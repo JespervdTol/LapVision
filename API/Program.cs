@@ -1,102 +1,160 @@
-﻿using Core.Context;
-using Core.Services;
+﻿using Model.Entities;
+using API.Services;
+using API.Helpers;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Text.Json.Serialization;
+using Microsoft.OpenApi.Models;
+using System.Diagnostics;
+using Infrastructure.App.Persistence;
+
+var sw = Stopwatch.StartNew();
 
 var builder = WebApplication.CreateBuilder(args);
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] Builder created in {sw.ElapsedMilliseconds} ms");
 
+sw.Restart();
 builder.Configuration
-    .SetBasePath(Path.Combine(AppContext.BaseDirectory))
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
 
-if (builder.Configuration is IConfigurationRoot configRoot)
+var certPath = Path.Combine(AppContext.BaseDirectory, "cert.pfx");
+var certPassword = builder.Configuration["Kestrel:Certificates:Default:Password"];
+
+builder.WebHost.ConfigureKestrel(options =>
 {
-    foreach (var provider in configRoot.Providers)
-    {
-        Console.WriteLine($"📄 Config provider: {provider.GetType().Name}");
-    }
-}
-
-builder.WebHost.UseUrls();
-
-builder.WebHost.ConfigureKestrel((context, options) =>
-{
-    var config = context.Configuration;
-    var httpPort = config.GetValue("ASPNETCORE_HTTP_PORT", 5082);
-    var httpsPort = config.GetValue("ASPNETCORE_HTTPS_PORT", 7234);
-    var certPath = Path.Combine(AppContext.BaseDirectory, "cert.pfx");
-    var certPassword = "jtol123@";
-
-    Console.WriteLine($"🌐 Binding ports: HTTP={httpPort}, HTTPS={httpsPort}");
+    var httpPort = builder.Configuration.GetValue("ASPNETCORE_HTTP_PORT", 5082);
+    var httpsPort = builder.Configuration.GetValue("ASPNETCORE_HTTPS_PORT", 7234);
 
     options.ListenAnyIP(httpPort);
 
-    if (File.Exists(certPath))
+    if (File.Exists(certPath) && !string.IsNullOrEmpty(certPassword))
     {
-        Console.WriteLine("✅ Cert found! Enabling HTTPS.");
-        options.ListenAnyIP(httpsPort, listenOptions =>
-        {
-            listenOptions.UseHttps(certPath, certPassword);
-        });
+        options.ListenAnyIP(httpsPort, listen => listen.UseHttps(certPath, certPassword));
     }
 });
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] Config loaded and Kestrel configured in {sw.ElapsedMilliseconds} ms");
 
-var configuration = builder.Configuration;
-var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-Console.WriteLine($"🧪 Connection string: {connectionString}");
-
-if (string.IsNullOrEmpty(connectionString))
-{
-    throw new InvalidOperationException("❌ Database connection string ontbreekt! Controleer je appsettings.json.");
-}
-
+sw.Restart();
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
-        mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
-
-builder.Services.AddHttpClient<WeatherService>(client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7234/");
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableDetailedErrors();
+        options.EnableSensitiveDataLogging();
+    }
 });
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<LapTimeService>();
 
-builder.Services.AddControllers();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var jwt = builder.Configuration.GetSection("Jwt");
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt["Issuer"],
+            ValidAudience = jwt["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!))
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
+
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "LapVision API", Version = "v1" });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT using Bearer. Example: 'Bearer {token}'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
-    });
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] Services registered in {sw.ElapsedMilliseconds} ms");
 
+sw.Restart();
 var app = builder.Build();
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] App built in {sw.ElapsedMilliseconds} ms");
 
+sw.Restart();
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+    var context = scope.ServiceProvider.GetRequiredService<DataContext>();
 
-    try
+    if (!context.Database.CanConnect())
     {
-        dbContext.Database.Migrate();
+        System.Diagnostics.Debug.WriteLine("[Startup] 🛠️ Database not found — running migrations and seeding...");
 
-        if (dbContext.Database.CanConnect())
+        if (app.Environment.IsDevelopment())
         {
-            Console.WriteLine("✅ Database-verbinding succesvol!");
+            if (context.Database.GetPendingMigrations().Any())
+            {
+                var migrateSw = Stopwatch.StartNew();
+                context.Database.Migrate();
+                migrateSw.Stop();
+                System.Diagnostics.Debug.WriteLine($"[Startup] Database migrated in {migrateSw.ElapsedMilliseconds} ms");
+            }
         }
-        else
+
+        var seedSw = Stopwatch.StartNew();
+        if (!context.Accounts.Any(a => a.Role == Model.Enums.UserRole.Admin))
         {
-            Console.WriteLine("❌ Database-verbinding mislukt! Controleer je instellingen.");
+            DataSeeder.SeedAdmin(context, builder.Configuration);
         }
+        seedSw.Stop();
+        System.Diagnostics.Debug.WriteLine($"[Startup] Admin seeding (if needed) took {seedSw.ElapsedMilliseconds} ms");
     }
-    catch (Exception ex)
+    else
     {
-        Console.WriteLine($"❌ Fout bij database-verbinding: {ex.Message}");
-        throw;
+        System.Diagnostics.Debug.WriteLine("[Startup] ✅ Database already exists. Skipping migration and seeding.");
     }
 }
+sw.Stop();
+System.Diagnostics.Debug.WriteLine($"[Startup] DB setup complete in {sw.ElapsedMilliseconds} ms");
 
 if (app.Environment.IsDevelopment())
 {
@@ -105,7 +163,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
-app.UseHttpsRedirection();
+
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
+
+System.Diagnostics.Debug.WriteLine("[Startup] API ready. Listening for requests...");
+
 app.Run();
