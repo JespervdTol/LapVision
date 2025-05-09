@@ -10,6 +10,7 @@ LapVision/
 │   ├── Services/                - Application logic (AuthService, LapTimeService, etc.)
 │   ├── Helpers/
 │   │   └── Mappers/             - Static mapping logic (DTO ↔ Entity, Enums)
+│   ├── Interfaces/              - IService interfaces for testability
 │   └── Program.cs               - API configuration and DI setup
 │
 ├── App/                         - MAUI Blazor Hybrid Client (Mobile App)
@@ -38,6 +39,11 @@ LapVision/
 │   └── Persistence/
 │       ├── DataContext.cs       - EF Core DbContext
 │       └── Migrations/          - EF Core migration files
+│
+├── Tests/                       - Unit and integration tests
+│   ├── API.Tests/               - API layer tests with mocked services
+│   ├── CoachWeb.Tests/          - MVC tests using mocked repositories
+│   └── TestUtilities/           - Mocks, fakes, test builders, etc.
 │
 ├── Dockerfile                   - Docker container setup for API
 ├── docker-compose.yml           - Multi-service setup (e.g., API + MySQL)
@@ -130,28 +136,34 @@ App communicates with API using DTOs. CoachWeb connects to DB directly via custo
 
 ## Common Pitfalls to Avoid
 
-- ❌ CoachWeb referencing Contracts (DTOs are API-only)
-- ❌ CoachWeb using EF Core (uses raw SQL or MySqlConnector instead)
-- ❌ App referencing Model directly
-- ❌ Logic in Controllers (should be in services)
-- ❌ API exposing entities instead of mapping to DTOs
+- CoachWeb referencing Contracts (DTOs are API-only)
+- CoachWeb using EF Core (uses raw SQL or MySqlConnector instead)
+- App referencing Model directly
+- Logic in Controllers (should be in services)
+- API exposing entities instead of mapping to DTOs
 
 ---
 
-## 💡 Dev Tip
+## Design Trade-offs
 
-Use `IRepository<T>` and `IService<T>` in CoachWeb for testable layers.
+### Dual Frontends: CoachWeb vs App
 
-If you later want CoachWeb to call the API instead of the DB directly, just swap repositories for `HttpClient` and use DTOs from `Contracts`.
+| Aspect              | CoachWeb (ASP.NET MVC)                                     | App (MAUI Blazor Hybrid)                             |
+|---------------------|------------------------------------------------------------|------------------------------------------------------|
+| **Access Pattern**   | Direct DB access using custom repositories (raw SQL)       | Communicates via API using DTOs                      |
+| **Use Case**         | Internal web dashboard for coaches                         | Cross-platform client app for users                  |
+| **Performance**      | Low-latency direct DB access                               | Slight overhead due to HTTP calls                    |
+| **Testability**      | Easily testable with mockable services & repositories      | Uses mocked HTTP handlers or DI for services         |
+| **Coupling**         | Tightly coupled to DB schema                               | Loosely coupled via API contract (DTOs)              |
+| **Flexibility**      | High control over queries and performance tuning           | Abstracted from DB structure                         |
+| **Security Layer**   | Internal-only; typically on intranet or behind auth        | Exposed API surface with role-based access control   |
+| **Maintenance**      | Manual sync with DB schema (risk of drift from API logic) | Central logic in API; clients stay thinner           |
 
-Use `AutoMapper` in API:
 
-```csharp
-var dto = _mapper.Map<AccountDTO>(accountEntity);
-```
+### What to Watch For
 
-Call API from App:
+- **Duplicate logic**: Ensure core validation/business rules are placed in the `Model` layer and reused, so both frontends behave consistently.
+- **Schema changes**: Keep CoachWeb in sync with DB schema changes that might otherwise be abstracted by the API.
+- **Security alignment**: Make sure CoachWeb has appropriate access controls, even if internal, and does not bypass logic enforced in the API.
 
-```csharp
-await Http.PostAsJsonAsync("api/auth/login", new LoginRequest { ... });
-```
+Thanks for reading!
