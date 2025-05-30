@@ -1,10 +1,13 @@
-﻿using Model.Entities.CoachWeb;
+﻿using Contracts.CoachWeb.ErrorHandeling;
+using Model.Entities.CoachWeb;
 
 namespace Infrastructure.CoachWeb.Interfaces
 {
     public interface IAccountRepository
     {
-        Task<Account?> GetByEmailOrUsernameAsync(string emailOrUsername);
-        Task<Account?> CreateCoachAccountAsync(Account account, Person person);
+        Task<Result<Account>> GetByEmailOrUsernameAsync(string emailOrUsername);
+        Task<Result<Account>> CreateCoachAccountAsync(Account account, Person person);
+        Task<bool> EmailExistsAsync(string email);
+        Task<bool> UsernameExistsAsync(string username);
     }
 }

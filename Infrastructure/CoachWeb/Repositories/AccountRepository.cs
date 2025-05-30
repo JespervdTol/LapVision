@@ -1,4 +1,5 @@
-﻿using Infrastructure.CoachWeb.Interfaces;
+﻿using Contracts.CoachWeb.ErrorHandeling;
+using Infrastructure.CoachWeb.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Model.Entities.CoachWeb;
 using Model.Enums;
@@ -15,45 +16,52 @@ namespace Infrastructure.CoachWeb.Repositories
             _connectionString = config.GetConnectionString("DefaultConnection");
         }
 
-        public async Task<Account?> GetByEmailOrUsernameAsync(string emailOrUsername)
+        public async Task<Result<Account>> GetByEmailOrUsernameAsync(string emailOrUsername)
         {
-            using var conn = new MySqlConnection(_connectionString);
-            await conn.OpenAsync();
-
-            var cmd = new MySqlCommand(@"
-                SELECT AccountID, Username, Email, PasswordHash, Role, CreatedAt
-                FROM Account 
-                WHERE Email = @Input OR Username = @Input", conn);
-
-            cmd.Parameters.AddWithValue("@Input", emailOrUsername);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
-            {
-                var account = new Account(
-                    reader.GetString("Username"),
-                    reader.GetString("Email"),
-                    reader.GetString("PasswordHash"),
-                    (UserRole)reader.GetInt32("Role")
-                );
-
-                typeof(Account).GetProperty("AccountID")?.SetValue(account, reader.GetInt32("AccountID"));
-                typeof(Account).GetProperty("CreatedAt")?.SetValue(account, reader.GetDateTime("CreatedAt"));
-
-                return account;
-            }
-
-            return null;
-        }
-
-        public async Task<Account?> CreateCoachAccountAsync(Account account, Person person)
-        {
-            using var conn = new MySqlConnection(_connectionString);
-            await conn.OpenAsync();
-            using var tran = await conn.BeginTransactionAsync();
-
             try
             {
+                using var conn = new MySqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                var cmd = new MySqlCommand(@"
+                    SELECT AccountID, Username, Email, PasswordHash, Role, CreatedAt
+                    FROM Account 
+                    WHERE Email = @Input OR Username = @Input", conn);
+
+                cmd.Parameters.AddWithValue("@Input", emailOrUsername);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    var account = new Account(
+                        reader.GetString("Username"),
+                        reader.GetString("Email"),
+                        reader.GetString("PasswordHash"),
+                        (UserRole)reader.GetInt32("Role")
+                    );
+
+                    typeof(Account).GetProperty("AccountID")?.SetValue(account, reader.GetInt32("AccountID"));
+                    typeof(Account).GetProperty("CreatedAt")?.SetValue(account, reader.GetDateTime("CreatedAt"));
+
+                    return Result<Account>.Success(account);
+                }
+
+                return Result<Account>.Failure("User not found.", ErrorType.UserError);
+            }
+            catch (Exception ex)
+            {
+                return Result<Account>.Failure("Database error while retrieving user.", ErrorType.SystemError);
+            }
+        }
+
+        public async Task<Result<Account>> CreateCoachAccountAsync(Account account, Person person)
+        {
+            try
+            {
+                using var conn = new MySqlConnection(_connectionString);
+                await conn.OpenAsync();
+                using var tran = await conn.BeginTransactionAsync();
+
                 var cmd1 = new MySqlCommand(@"
                     INSERT INTO Account (Username, Email, PasswordHash, Role, CreatedAt)
                     VALUES (@Username, @Email, @PasswordHash, @Role, @Now);
@@ -82,14 +90,36 @@ namespace Infrastructure.CoachWeb.Repositories
                 await cmd2.ExecuteNonQueryAsync();
                 await tran.CommitAsync();
 
-                return account;
+                return Result<Account>.Success(account);
             }
-            catch (Exception ex)
+            catch
             {
-                await tran.RollbackAsync();
-                System.Diagnostics.Debug.WriteLine($"❌ Registration error: {ex.Message}");
-                return null;
+                return Result<Account>.Failure("An error occurred during registration. Please try again later.");
             }
+        }
+
+        public async Task<bool> EmailExistsAsync(string email)
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            await conn.OpenAsync();
+
+            var cmd = new MySqlCommand("SELECT 1 FROM Account WHERE Email = @Email LIMIT 1", conn);
+            cmd.Parameters.AddWithValue("@Email", email);
+
+            var result = await cmd.ExecuteScalarAsync();
+            return result != null;
+        }
+
+        public async Task<bool> UsernameExistsAsync(string username)
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            await conn.OpenAsync();
+
+            var cmd = new MySqlCommand("SELECT 1 FROM Account WHERE Username = @Username LIMIT 1", conn);
+            cmd.Parameters.AddWithValue("@Username", username);
+
+            var result = await cmd.ExecuteScalarAsync();
+            return result != null;
         }
     }
 }

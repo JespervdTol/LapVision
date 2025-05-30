@@ -1,7 +1,7 @@
 ﻿using CoachWeb.Services.Interfaces;
 using Contracts.CoachWeb.ViewModels.Account;
+using Contracts.CoachWeb.ErrorHandeling;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -28,33 +28,35 @@ namespace CoachWeb.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            var user = await _accountService.ValidateLoginAsync(model.EmailOrUsername, model.Password);
-            if (user == null)
+            var result = await _accountService.ValidateLoginAsync(model.EmailOrUsername, model.Password);
+            if (result.IsFailure)
             {
-                model.ErrorMessage = "Invalid credentials.";
-                return View(model);
+                TempData["ErrorMessage"] = result.Error;
+                TempData["ShowReportButton"] = result.ErrorCategory == ErrorType.SystemError;
+                TempData["ErrorContext"] = "Login";
+                return RedirectToAction("Login");
             }
 
+            var user = result.Value!;
             var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.AccountID.ToString()),
-                    new Claim(ClaimTypes.Name, user.Username),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Role, user.Role.ToString())
-                };
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.AccountID.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role.ToString())
+            };
 
             var identity = new ClaimsIdentity(claims, "CoachAuth");
             var principal = new ClaimsPrincipal(identity);
 
             await HttpContext.SignInAsync("CoachAuth", principal);
-
             return RedirectToAction("Index", "Home");
         }
 
         [HttpGet]
         public IActionResult Register()
         {
-            return View();
+            return View(new RegisterCoachViewModel());
         }
 
         [HttpPost]
@@ -63,11 +65,13 @@ namespace CoachWeb.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            var account = await _accountService.RegisterCoachAsync(model);
-            if (account == null)
+            var result = await _accountService.RegisterCoachAsync(model);
+            if (result.IsFailure)
             {
-                ModelState.AddModelError("", "Registration failed.");
-                return View(model);
+                TempData["ErrorMessage"] = result.Error;
+                TempData["ShowReportButton"] = result.ErrorCategory == ErrorType.SystemError;
+                TempData["ErrorContext"] = "Register";
+                return RedirectToAction("Register");
             }
 
             return RedirectToAction("Login");

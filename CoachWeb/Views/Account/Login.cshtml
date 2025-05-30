@@ -17,10 +17,7 @@
     <div class="auth-container">
         <h2>Login</h2>
 
-        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-        {
-            <div class="alert alert-danger">@Model.ErrorMessage</div>
-        }
+        @await Html.PartialAsync("_ErrorDisplayPartial")
 
         <form asp-action="Login" method="post">
             <div class="form-group">
