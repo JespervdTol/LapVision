@@ -1,0 +1,24 @@
+﻿@{
+    var error = TempData["ErrorMessage"] as string;
+    var showReport = (TempData["ShowReportButton"] as bool?) ?? false;
+    var context = TempData["ErrorContext"] as string ?? "Unknown";
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">
+        <p>@error</p>
+
+        @if (showReport)
+        {
+            <form method="post" asp-controller="ErrorReport" asp-action="ReportError">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="context" value="@context" />
+                <input type="hidden" name="error" value="@error" />
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <button type="submit" class="btn btn-warning btn-sm mt-2">Report this issue</button>
+            </form>
+        }
+    </div>
+}

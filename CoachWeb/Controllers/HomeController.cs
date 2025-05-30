@@ -16,7 +16,6 @@ namespace CoachWeb.Controllers
 
         public IActionResult Index()
         {
-            // Get user's name from claims if authenticated
             var username = User.Identity?.IsAuthenticated == true
                 ? User.FindFirstValue(ClaimTypes.Name) ?? "Coach"
                 : "Guest";

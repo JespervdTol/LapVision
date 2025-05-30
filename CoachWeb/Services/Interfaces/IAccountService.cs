@@ -1,11 +1,12 @@
-﻿using Contracts.CoachWeb.ViewModels.Account;
+﻿using Contracts.CoachWeb.ErrorHandeling;
+using Contracts.CoachWeb.ViewModels.Account;
 using Model.Entities.CoachWeb;
 
 namespace CoachWeb.Services.Interfaces
 {
     public interface IAccountService
     {
-        Task<Account?> ValidateLoginAsync(string emailOrUsername, string password);
-        Task<Account?> RegisterCoachAsync(RegisterCoachViewModel vm);
+        Task<Result<Account>> ValidateLoginAsync(string emailOrUsername, string password);
+        Task<Result<Account>> RegisterCoachAsync(RegisterCoachViewModel vm);
     }
 }
