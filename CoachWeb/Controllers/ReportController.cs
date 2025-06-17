@@ -1,5 +1,6 @@
 ﻿using Application.CoachWeb.Services;
 using Contracts.CoachWeb.Interfaces.Services;
+using Contracts.CoachWeb.ViewModels;
 using Contracts.CoachWeb.ViewModels.Comparison;
 using Contracts.CoachWeb.ViewModels.Report;
 using Microsoft.AspNetCore.Authorization;
@@ -13,27 +14,87 @@ namespace CoachWeb.Controllers
     public class ReportController : Controller
     {
         private readonly IReportService _reportService;
+        private readonly DriverComparisonService _comparisonService;
         private readonly IConfiguration _config;
 
-        public ReportController(IReportService reportService, IConfiguration config)
+        public ReportController(IReportService reportService, DriverComparisonService comparisonService, IConfiguration config)
         {
             _reportService = reportService;
+            _comparisonService = comparisonService;
             _config = config;
         }
 
         [HttpGet]
-        public async Task<IActionResult> Driver(int? personId)
+        public async Task<IActionResult> Driver(int? personId, int? sessionId)
         {
             var drivers = await GetAllDriversAsync();
             ViewBag.Drivers = drivers;
 
             if (personId == null)
-            {
                 return View("DriverReport", new List<DriverReportViewModel>());
+
+            var sessions = await _reportService.GetDriverReportAsync(personId.Value);
+            ViewBag.Sessions = sessions.Select(s => new SessionDropdownViewModel
+            {
+                SessionID = s.SessionID,
+                DisplayText = $"{s.CircuitName} ({s.SessionDate:dd MMM yyyy})"
+            }).ToList();
+
+            if (sessionId != null)
+            {
+                var session = await _reportService.GetSessionReportAsync(sessionId.Value);
+                return View("DriverReport", session != null ? new List<DriverReportViewModel> { session } : new());
             }
 
-            var report = await _reportService.GetDriverReportAsync(personId.Value);
-            return View("DriverReport", report);
+            return View("DriverReport", sessions);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CompareDrivers(
+    int? selectedDriver1Id, int? selectedSession1Id,
+    int? selectedDriver2Id, int? selectedSession2Id,
+    List<string>? selectedComparisons)
+        {
+            var model = new CompareDriversFormViewModel
+            {
+                AllDrivers = await GetAllDriversAsync(),
+                AvailableComparisons = _comparisonService.GetAvailableComparisonMetrics()
+            };
+
+            if (selectedDriver1Id != null)
+                model.Driver1Sessions = await _reportService.GetSessionDropdownAsync(selectedDriver1Id.Value);
+            if (selectedDriver2Id != null)
+                model.Driver2Sessions = await _reportService.GetSessionDropdownAsync(selectedDriver2Id.Value);
+
+            model.SelectedDriver1Id = selectedDriver1Id;
+            model.SelectedDriver2Id = selectedDriver2Id;
+            model.SelectedSession1Id = selectedSession1Id;
+            model.SelectedSession2Id = selectedSession2Id;
+
+            if (selectedDriver1Id != null && selectedDriver2Id != null &&
+                selectedSession1Id != null && selectedSession2Id != null &&
+                selectedComparisons != null && selectedComparisons.Any())
+            {
+                var driver1Name = model.AllDrivers.FirstOrDefault(d => d.PersonID == selectedDriver1Id)?.FullName ?? "Driver 1";
+                var driver2Name = model.AllDrivers.FirstOrDefault(d => d.PersonID == selectedDriver2Id)?.FullName ?? "Driver 2";
+
+                var result = await _comparisonService.CompareDrivers(
+                    driver1Name, selectedSession1Id.Value,
+                    driver2Name, selectedSession2Id.Value,
+                    selectedComparisons
+                );
+
+                if (result.IsFailure)
+                {
+                    model.ErrorMessage = result.Error;
+                }
+                else
+                {
+                    model.Result = result.Value!;
+                }
+            }
+
+            return View("CompareDrivers", model);
         }
 
         private async Task<List<DriverDropdownViewModel>> GetAllDriversAsync()
@@ -65,43 +126,6 @@ namespace CoachWeb.Controllers
             }
 
             return list;
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> CompareDrivers(int? driver1Id, int? driver2Id, List<string>? selectedComparisons)
-        {
-            var drivers = await GetAllDriversAsync();
-            ViewBag.Drivers = drivers;
-
-            // Get comparison strategy names for checkboxes
-            var comparisonService = HttpContext.RequestServices.GetService<DriverComparisonService>();
-            ViewBag.ComparisonTypes = comparisonService.GetAvailableComparisonMetrics();
-
-            if (driver1Id == null || driver2Id == null || selectedComparisons == null)
-            {
-                return View("CompareDrivers", new DriverComparisonViewModel());
-            }
-
-            var driver1Data = await _reportService.GetDriverReportAsync(driver1Id.Value);
-            var driver2Data = await _reportService.GetDriverReportAsync(driver2Id.Value);
-
-            var driver1Name = drivers.First(d => d.PersonID == driver1Id.Value).FullName;
-            var driver2Name = drivers.First(d => d.PersonID == driver2Id.Value).FullName;
-
-            var results = comparisonService.CompareDrivers(
-                driver1Data.First(), driver1Name,
-                driver2Data.First(), driver2Name,
-                selectedComparisons
-            );
-
-            var viewModel = new DriverComparisonViewModel
-            {
-                Driver1Name = driver1Name,
-                Driver2Name = driver2Name,
-                ComparisonResults = results
-            };
-
-            return View("CompareDrivers", viewModel);
         }
     }
 }

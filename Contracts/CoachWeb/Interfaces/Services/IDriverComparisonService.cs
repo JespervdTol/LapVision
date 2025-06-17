@@ -7,8 +7,6 @@ namespace Contracts.CoachWeb.Interfaces.Services
     {
         string Name { get; }
 
-        ComparisonResultViewModel Compare(
-            DriverReportViewModel driver1, string driver1Name,
-            DriverReportViewModel driver2, string driver2Name);
+        ComparisonResultViewModel Compare(DriverReportViewModel driver1, string driver1Name, DriverReportViewModel driver2, string driver2Name);
     }
 }

@@ -87,5 +87,71 @@ namespace Infrastructure.CoachWeb.Repositories
 
             return reports.Values.ToList();
         }
+
+        public async Task<List<DriverReportViewModel>> GetReportBySessionIdAsync(int sessionId)
+        {
+            var reports = new Dictionary<int, DriverReportViewModel>();
+
+            using var conn = new MySqlConnection(_connectionString);
+            await conn.OpenAsync();
+
+            var cmd = new MySqlCommand(@"
+                SELECT 
+                    s.SessionID,
+                    s.CreatedAt,
+                    c.Name AS CircuitName,
+                    h.HeatNumber,
+                    l.LapNumber,
+                    l.TotalTime,
+                    l.StartTime,
+                    l.EndTime
+                FROM Session s
+                JOIN Circuit c ON s.CircuitID = c.CircuitID
+                JOIN Heat h ON h.SessionID = s.SessionID
+                JOIN LapTime l ON l.HeatID = h.HeatID
+                WHERE s.SessionID = @SessionID
+                ORDER BY s.CreatedAt, h.HeatNumber, l.LapNumber;
+            ", conn);
+
+            cmd.Parameters.AddWithValue("@SessionID", sessionId);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var sid = reader.GetInt32("SessionID");
+                if (!reports.TryGetValue(sid, out var report))
+                {
+                    report = new DriverReportViewModel
+                    {
+                        SessionID = sid,
+                        SessionDate = reader.GetDateTime("CreatedAt"),
+                        CircuitName = reader.GetString("CircuitName")
+                    };
+                    reports[sid] = report;
+                }
+
+                var heatNumber = reader.GetInt32("HeatNumber");
+                var heat = report.Heats.FirstOrDefault(h => h.HeatNumber == heatNumber);
+                if (heat == null)
+                {
+                    heat = new HeatReportViewModel { HeatNumber = heatNumber };
+                    report.Heats.Add(heat);
+                }
+
+                TimeSpan? time = null;
+                if (!reader.IsDBNull("TotalTime"))
+                    time = (TimeSpan)reader["TotalTime"];
+                else if (!reader.IsDBNull("StartTime") && !reader.IsDBNull("EndTime"))
+                    time = (TimeSpan)reader["EndTime"] - (TimeSpan)reader["StartTime"];
+
+                heat.Laps.Add(new LapReportViewModel
+                {
+                    LapNumber = reader.GetInt32("LapNumber"),
+                    TotalTime = time
+                });
+            }
+
+            return reports.Values.ToList();
+        }
     }
 }
