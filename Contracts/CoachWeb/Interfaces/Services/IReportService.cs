@@ -1,6 +1,6 @@
 ﻿using Contracts.CoachWeb.ViewModels.Report;
 
-namespace CoachWeb.Services.Interfaces
+namespace Contracts.CoachWeb.Interfaces.Services
 {
     public interface IReportService
     {

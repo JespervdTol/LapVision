@@ -1,6 +1,6 @@
 ﻿using Contracts.CoachWeb.ViewModels.Report;
 
-namespace Infrastructure.CoachWeb.Interfaces
+namespace Contracts.CoachWeb.Interfaces.Repositories
 {
     public interface IReportRepository
     {

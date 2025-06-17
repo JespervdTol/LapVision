@@ -1,4 +1,4 @@
-﻿using CoachWeb.Services.Interfaces;
+﻿using Contracts.CoachWeb.Interfaces.Services;
 using Contracts.CoachWeb.ViewModels.Account;
 using Contracts.CoachWeb.ErrorHandeling;
 using Microsoft.AspNetCore.Authentication;

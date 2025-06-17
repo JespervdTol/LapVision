@@ -1,5 +1,5 @@
 ﻿using Contracts.CoachWeb.ErrorHandeling;
-using Infrastructure.CoachWeb.Interfaces;
+using Contracts.CoachWeb.Interfaces.Repositories;
 using Microsoft.Extensions.Configuration;
 using Model.Entities.CoachWeb;
 using Model.Enums;

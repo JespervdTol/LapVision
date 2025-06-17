@@ -1,6 +1,7 @@
-﻿using CoachWeb.Services;
-using CoachWeb.Services.Interfaces;
-using Infrastructure.CoachWeb.Interfaces;
+﻿using Application.CoachWeb.Comparison;
+using Application.CoachWeb.Services;
+using Contracts.CoachWeb.Interfaces.Repositories;
+using Contracts.CoachWeb.Interfaces.Services;
 using Infrastructure.CoachWeb.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,11 @@ builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<DriverComparisonService>();
+
+builder.Services.AddScoped<IDriverComparisonService, DriverComparisonStrategy_AverageLapTime>();
+builder.Services.AddScoped<IDriverComparisonService, DriverComparisonStrategy_TrackCondition>();
+
 
 builder.Services.AddAuthentication("CoachAuth")
     .AddCookie("CoachAuth", options =>

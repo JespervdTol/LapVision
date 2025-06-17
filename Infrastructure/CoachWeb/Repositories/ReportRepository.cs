@@ -1,5 +1,5 @@
 ﻿using Contracts.CoachWeb.ViewModels.Report;
-using Infrastructure.CoachWeb.Interfaces;
+using Contracts.CoachWeb.Interfaces.Repositories;
 using Microsoft.Extensions.Configuration;
 using MySqlConnector;
 using System.Data;

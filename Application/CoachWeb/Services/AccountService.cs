@@ -1,12 +1,12 @@
 ﻿using BCrypt.Net;
-using CoachWeb.Services.Interfaces;
+using Contracts.CoachWeb.Interfaces.Services;
 using Contracts.CoachWeb.ErrorHandeling;
 using Contracts.CoachWeb.ViewModels.Account;
-using Infrastructure.CoachWeb.Interfaces;
+using Contracts.CoachWeb.Interfaces.Repositories;
 using Model.Entities.CoachWeb;
 using Model.Enums;
 
-namespace CoachWeb.Services
+namespace Application.CoachWeb.Services
 {
     public class AccountService : IAccountService
     {

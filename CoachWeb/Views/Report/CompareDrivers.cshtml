@@ -1,0 +1,71 @@
+﻿@model Contracts.CoachWeb.ViewModels.Comparison.DriverComparisonViewModel
+@{
+    ViewData["Title"] = "Compare Drivers";
+    var drivers = ViewBag.Drivers as List<Contracts.CoachWeb.ViewModels.Report.DriverDropdownViewModel>;
+    var comparisonTypes = ViewBag.ComparisonTypes as List<string>;
+}
+
+<h2>Compare Drivers</h2>
+
+<form asp-action="CompareDrivers" method="get" class="mb-4">
+    <div class="row">
+        <div class="col-md-4">
+            <label>Select Driver 1</label>
+            <select name="driver1Id" class="form-select" required>
+                <option disabled selected>Select a driver</option>
+                @foreach (var d in drivers)
+                {
+                    <option value="@d.PersonID">@d.FullName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label>Select Driver 2</label>
+            <select name="driver2Id" class="form-select" required>
+                <option disabled selected>Select a driver</option>
+                @foreach (var d in drivers)
+                {
+                    <option value="@d.PersonID">@d.FullName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label>Select Comparisons</label><br />
+            @foreach (var type in comparisonTypes ?? new List<string>())
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="selectedComparisons" value="@type" checked />
+                    <label class="form-check-label">@type</label>
+                </div>
+            }
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">Compare</button>
+</form>
+
+@if (Model?.ComparisonResults?.Any() == true)
+{
+    <h3 class="mt-4">Comparison Results</h3>
+    <table class="table table-bordered mt-2">
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>@Model.Driver1Name</th>
+                <th>@Model.Driver2Name</th>
+                <th>Winner</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var result in Model.ComparisonResults)
+            {
+                <tr>
+                    <td>@result.MetricName</td>
+                    <td>@result.Driver1Value</td>
+                    <td>@result.Driver2Value</td>
+                    <td><strong>@result.Winner</strong></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

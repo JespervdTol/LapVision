@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Model", "Model\Model.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoachWeb", "CoachWeb\CoachWeb.csproj", "{472EB642-68A1-4BF4-9CD0-A57AA326F927}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application", "Application\Application.csproj", "{7E8EA08E-A29F-4505-95EE-A432A53421D5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +64,10 @@ Global
 		{472EB642-68A1-4BF4-9CD0-A57AA326F927}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{472EB642-68A1-4BF4-9CD0-A57AA326F927}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{472EB642-68A1-4BF4-9CD0-A57AA326F927}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E8EA08E-A29F-4505-95EE-A432A53421D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E8EA08E-A29F-4505-95EE-A432A53421D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E8EA08E-A29F-4505-95EE-A432A53421D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E8EA08E-A29F-4505-95EE-A432A53421D5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

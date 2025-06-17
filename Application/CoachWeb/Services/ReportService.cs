@@ -1,8 +1,8 @@
-﻿using CoachWeb.Services.Interfaces;
+﻿using Contracts.CoachWeb.Interfaces.Services;
 using Contracts.CoachWeb.ViewModels.Report;
-using Infrastructure.CoachWeb.Interfaces;
+using Contracts.CoachWeb.Interfaces.Repositories;
 
-namespace CoachWeb.Services
+namespace Application.CoachWeb.Services
 {
     public class ReportService : IReportService
     {
