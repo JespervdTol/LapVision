@@ -1,0 +1,127 @@
+﻿@model Contracts.CoachWeb.ViewModels.Comparison.CompareDriversFormViewModel
+@{
+    ViewData["Title"] = "Compare Drivers";
+}
+
+<h2>Compare Drivers</h2>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<form asp-action="CompareDrivers" method="get" class="mb-4">
+    <div class="row">
+        <div class="col-md-3">
+            <label>Select Driver 1</label>
+            <select name="selectedDriver1Id" class="form-select" onchange="this.form.submit()">
+                <option disabled selected>Select a driver</option>
+                @foreach (var d in Model.AllDrivers)
+                {
+                    if (d.PersonID == Model.SelectedDriver1Id)
+                    {
+                        <option value="@d.PersonID" selected="selected">@d.FullName</option>
+                    }
+                    else
+                    {
+                        <option value="@d.PersonID">@d.FullName</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label>Session for Driver 1</label>
+            <select name="selectedSession1Id" class="form-select" @(Model.Driver1Sessions.Any() ? "" : "disabled")>
+                <option disabled selected>Select a session</option>
+                @foreach (var session in Model.Driver1Sessions)
+                {
+                    if (session.SessionID == Model.SelectedSession1Id)
+                    {
+                        <option value="@session.SessionID" selected="selected">@session.DisplayText</option>
+                    }
+                    else
+                    {
+                        <option value="@session.SessionID">@session.DisplayText</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label>Select Driver 2</label>
+            <select name="selectedDriver2Id" class="form-select" onchange="this.form.submit()">
+                <option disabled selected>Select a driver</option>
+                @foreach (var d in Model.AllDrivers)
+                {
+                    if (d.PersonID == Model.SelectedDriver2Id)
+                    {
+                        <option value="@d.PersonID" selected="selected">@d.FullName</option>
+                    }
+                    else
+                    {
+                        <option value="@d.PersonID">@d.FullName</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label>Session for Driver 2</label>
+            <select name="selectedSession2Id" class="form-select" @(Model.Driver2Sessions.Any() ? "" : "disabled")>
+                <option disabled selected>Select a session</option>
+                @foreach (var session in Model.Driver2Sessions)
+                {
+                    if (session.SessionID == Model.SelectedSession2Id)
+                    {
+                        <option value="@session.SessionID" selected="selected">@session.DisplayText</option>
+                    }
+                    else
+                    {
+                        <option value="@session.SessionID">@session.DisplayText</option>
+                    }
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <label>Select Comparisons</label><br />
+        @foreach (var option in Model.StrategyOptions)
+        {
+            var isChecked = Model.SelectedComparisonIds.Contains(option.Id);
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name="selectedComparisons" value="@option.Id" @(isChecked ? "checked" : "") />
+                <label class="form-check-label">@option.DisplayName</label>
+            </div>
+        }
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">Compare</button>
+</form>
+
+@if (Model?.Result?.ComparisonResults?.Any() == true)
+{
+    <h3 class="mt-4">Comparison Results</h3>
+    <table class="table table-bordered mt-2">
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>@Model.Result.Driver1Name</th>
+                <th>@Model.Result.Driver2Name</th>
+                <th>Winner</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var result in Model.Result.ComparisonResults)
+            {
+                <tr>
+                    <td>@result.MetricName</td>
+                    <td>@result.Driver1Value</td>
+                    <td>@result.Driver2Value</td>
+                    <td><strong>@result.Winner</strong></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

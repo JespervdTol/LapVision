@@ -1,7 +1,7 @@
 ﻿using Contracts.CoachWeb.ErrorHandeling;
 using Model.Entities.CoachWeb;
 
-namespace Infrastructure.CoachWeb.Interfaces
+namespace Contracts.CoachWeb.Interfaces.Repositories
 {
     public interface IAccountRepository
     {

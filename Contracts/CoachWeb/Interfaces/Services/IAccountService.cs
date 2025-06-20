@@ -2,7 +2,7 @@
 using Contracts.CoachWeb.ViewModels.Account;
 using Model.Entities.CoachWeb;
 
-namespace CoachWeb.Services.Interfaces
+namespace Contracts.CoachWeb.Interfaces.Services
 {
     public interface IAccountService
     {

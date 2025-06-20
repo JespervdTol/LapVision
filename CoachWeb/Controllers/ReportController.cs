@@ -1,9 +1,10 @@
-﻿using CoachWeb.Services.Interfaces;
+﻿using Contracts.CoachWeb.Interfaces.Services;
+using Contracts.CoachWeb.ViewModels;
+using CoachWeb.Mappers;
+using Contracts.CoachWeb.ViewModels.Comparison;
 using Contracts.CoachWeb.ViewModels.Report;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using MySqlConnector;
 
 namespace CoachWeb.Controllers
 {
@@ -11,58 +12,142 @@ namespace CoachWeb.Controllers
     public class ReportController : Controller
     {
         private readonly IReportService _reportService;
-        private readonly IConfiguration _config;
+        private readonly IDriverComparisonService _comparisonService;
+        private readonly IEnumerable<IDriverComparisonCoordinator> _allStrategies;
 
-        public ReportController(IReportService reportService, IConfiguration config)
+        public ReportController(
+            IReportService reportService,
+            IDriverComparisonService comparisonService,
+            IEnumerable<IDriverComparisonCoordinator> allStrategies)
         {
             _reportService = reportService;
-            _config = config;
+            _comparisonService = comparisonService;
+            _allStrategies = allStrategies;
         }
 
         [HttpGet]
-        public async Task<IActionResult> Driver(int? personId)
+        public async Task<IActionResult> Driver(int? personId, int? sessionId)
         {
-            var drivers = await GetAllDriversAsync();
-            ViewBag.Drivers = drivers;
+            var drivers = await _reportService.GetAllDriversAsync();
+            ViewBag.Drivers = drivers.Select(d => new DriverDropdownViewModel
+            {
+                PersonID = d.PersonId,
+                FullName = d.FullName
+            }).ToList();
 
             if (personId == null)
-            {
                 return View("DriverReport", new List<DriverReportViewModel>());
+
+            var sessionDTOs = await _reportService.GetDriverReportAsync(personId.Value);
+            var sessions = sessionDTOs.Select(DriverReportViewModelMapper.ToViewModel).ToList();
+
+            ViewBag.Sessions = sessions.Select(s => new SessionDropdownViewModel
+            {
+                SessionID = s.SessionID,
+                DisplayText = $"{s.CircuitName} ({s.SessionDate:dd MMM yyyy})"
+            }).ToList();
+
+            if (sessionId != null)
+            {
+                var singleDTO = await _reportService.GetSessionReportAsync(sessionId.Value);
+                var singleVM = singleDTO != null ? DriverReportViewModelMapper.ToViewModel(singleDTO) : null;
+
+                return View("DriverReport", singleVM != null ? new List<DriverReportViewModel> { singleVM } : new());
             }
 
-            var report = await _reportService.GetDriverReportAsync(personId.Value);
-            return View("DriverReport", report);
+            return View("DriverReport", sessions);
         }
 
-        private async Task<List<DriverDropdownViewModel>> GetAllDriversAsync()
+        [HttpGet]
+        public async Task<IActionResult> CompareDrivers(
+    int? selectedDriver1Id,
+    int? selectedSession1Id,
+    int? selectedDriver2Id,
+    int? selectedSession2Id,
+    List<string>? selectedComparisons)
         {
-            var list = new List<DriverDropdownViewModel>();
+            var allDrivers = await _reportService.GetAllDriversAsync();
 
-            using var conn = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
-            await conn.OpenAsync();
-
-            var cmd = new MySqlCommand(@"
-                SELECT PersonID, firstName, prefix, lastName
-                FROM Person
-                WHERE personType = 'Driver'
-                ORDER BY lastName, firstName", conn);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            var strategyOptions = _allStrategies.Select(s => new StrategyOptionViewModel
             {
-                var fullName = string.Join(" ",
-                    reader["firstName"] as string,
-                    reader["prefix"] as string ?? "",
-                    reader["lastName"] as string);
+                Id = s.GetType().Name,
+                DisplayName = s.Name
+            }).ToList();
 
-                list.Add(new DriverDropdownViewModel
+            var model = new CompareDriversFormViewModel
+            {
+                AllDrivers = allDrivers.Select(d => new DriverDropdownViewModel
                 {
-                    PersonID = reader.GetInt32("PersonID"),
-                    FullName = fullName.Trim()
-                });
+                    PersonID = d.PersonId,
+                    FullName = d.FullName
+                }).ToList(),
+                StrategyOptions = strategyOptions,
+                SelectedDriver1Id = selectedDriver1Id,
+                SelectedDriver2Id = selectedDriver2Id,
+                SelectedSession1Id = selectedSession1Id,
+                SelectedSession2Id = selectedSession2Id,
+                SelectedComparisonIds = selectedComparisons ?? new List<string>()
+            };
+
+            if (selectedDriver1Id != null)
+            {
+                var driver1Sessions = await _reportService.GetDriverReportAsync(selectedDriver1Id.Value);
+                model.Driver1Sessions = driver1Sessions.Select(s => new SessionDropdownViewModel
+                {
+                    SessionID = s.SessionId,
+                    DisplayText = $"{s.CircuitName} ({s.SessionDate:dd MMM yyyy})"
+                }).ToList();
             }
 
-            return list;
+            if (selectedDriver2Id != null)
+            {
+                var driver2Sessions = await _reportService.GetDriverReportAsync(selectedDriver2Id.Value);
+                model.Driver2Sessions = driver2Sessions.Select(s => new SessionDropdownViewModel
+                {
+                    SessionID = s.SessionId,
+                    DisplayText = $"{s.CircuitName} ({s.SessionDate:dd MMM yyyy})"
+                }).ToList();
+            }
+
+            if (selectedDriver1Id != null && selectedDriver2Id != null &&
+                selectedSession1Id != null && selectedSession2Id != null &&
+                selectedComparisons != null && selectedComparisons.Any())
+            {
+                var driver1Name = model.AllDrivers.FirstOrDefault(d => d.PersonID == selectedDriver1Id)?.FullName ?? "Driver 1";
+                var driver2Name = model.AllDrivers.FirstOrDefault(d => d.PersonID == selectedDriver2Id)?.FullName ?? "Driver 2";
+
+                var selectedStrategies = _allStrategies
+                    .Where(s => selectedComparisons.Contains(s.GetType().Name))
+                    .ToList();
+
+                var result = await _comparisonService.CompareDrivers(
+                    driver1Name, selectedSession1Id.Value,
+                    driver2Name, selectedSession2Id.Value,
+                    selectedStrategies
+                );
+
+                if (result.IsFailure)
+                {
+                    model.ErrorMessage = result.Error;
+                }
+                else
+                {
+                    model.Result = new DriverComparisonViewModel
+                    {
+                        Driver1Name = result.Value!.Driver1Name,
+                        Driver2Name = result.Value.Driver2Name,
+                        ComparisonResults = result.Value.ComparisonResults.Select(r => new ComparisonResultViewModel
+                        {
+                            MetricName = r.MetricName,
+                            Driver1Value = r.Driver1Value,
+                            Driver2Value = r.Driver2Value,
+                            Winner = r.Winner
+                        }).ToList()
+                    };
+                }
+            }
+
+            return View("CompareDrivers", model);
         }
     }
 }

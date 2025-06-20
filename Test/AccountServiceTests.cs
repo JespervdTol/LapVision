@@ -1,8 +1,8 @@
-using CoachWeb.Services;
-using CoachWeb.Services.Interfaces;
+using Application.CoachWeb.Services;
 using Contracts.CoachWeb.ErrorHandeling;
 using Contracts.CoachWeb.ViewModels.Account;
-using Infrastructure.CoachWeb.Interfaces;
+using Contracts.CoachWeb.Interfaces.Services;
+using Contracts.CoachWeb.Interfaces.Repositories;
 using Model.Entities.CoachWeb;
 using Model.Enums;
 using Moq;
@@ -19,7 +19,7 @@ namespace Test
             _mockRepo = new Mock<IAccountRepository>();
             _accountService = new AccountService(_mockRepo.Object);
         }
-
+          
         [Fact]
         public async Task ValidateLoginAsync_ValidCredentials_ReturnsSuccessResultWithAccount()
         {
