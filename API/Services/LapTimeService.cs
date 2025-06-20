@@ -86,18 +86,18 @@ namespace API.Services
                 _context.MiniSectors.Add(sector);
             }
 
-            foreach (var pointDto in request.GPSPoints)
+            foreach (var pointDTO in request.GPSPoints)
             {
                 var matchingSector = sectors.FirstOrDefault(s =>
-                    pointDto.Timestamp >= s.StartTime && pointDto.Timestamp <= s.EndTime);
+                    pointDTO.Timestamp >= s.StartTime && pointDTO.Timestamp <= s.EndTime);
 
                 var point = new GPSPoint
                 {
-                    Latitude = pointDto.Latitude,
-                    Longitude = pointDto.Longitude,
-                    Timestamp = pointDto.Timestamp,
+                    Latitude = pointDTO.Latitude,
+                    Longitude = pointDTO.Longitude,
+                    Timestamp = pointDTO.Timestamp,
                     MiniSectorNumber = matchingSector?.SectorNumber,
-                    DeltaToBest = pointDto.DeltaToBest,
+                    DeltaToBest = pointDTO.DeltaToBest,
                     LapTimeID = lapTime.LapTimeID
                 };
 

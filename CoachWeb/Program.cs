@@ -19,11 +19,11 @@ builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IReportService, ReportService>();
-builder.Services.AddScoped<DriverComparisonService>();
+builder.Services.AddScoped<IDriverComparisonService, DriverComparisonService>();
 
-builder.Services.AddScoped<IDriverComparisonService, DriverComparisonStrategy_AverageLapTime>();
-builder.Services.AddScoped<IDriverComparisonService, DriverComparisonStrategy_TrackCondition>();
-builder.Services.AddScoped<IDriverComparisonService, DriverComparisonStrategy_FastestLapTime>();
+builder.Services.AddScoped<IDriverComparisonCoordinator, DriverComparisonStrategy_AverageLapTime>();
+builder.Services.AddScoped<IDriverComparisonCoordinator, DriverComparisonStrategy_TrackCondition>();
+builder.Services.AddScoped<IDriverComparisonCoordinator, DriverComparisonStrategy_FastestLapTime>();
 
 
 builder.Services.AddAuthentication("CoachAuth")

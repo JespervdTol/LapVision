@@ -87,11 +87,12 @@
 
     <div class="mt-3">
         <label>Select Comparisons</label><br />
-        @foreach (var type in Model.AvailableComparisons ?? new List<string>())
+        @foreach (var option in Model.StrategyOptions)
         {
+            var isChecked = Model.SelectedComparisonIds.Contains(option.Id);
             <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" name="selectedComparisons" value="@type" checked />
-                <label class="form-check-label">@type</label>
+                <input class="form-check-input" type="checkbox" name="selectedComparisons" value="@option.Id" @(isChecked ? "checked" : "") />
+                <label class="form-check-label">@option.DisplayName</label>
             </div>
         }
     </div>

@@ -1,4 +1,6 @@
-﻿using Contracts.CoachWeb.Interfaces.Repositories;
+﻿using Application.CoachWeb.Mappers;
+using Contracts.CoachWeb.DTO;
+using Contracts.CoachWeb.Interfaces.Repositories;
 using Contracts.CoachWeb.Interfaces.Services;
 using Contracts.CoachWeb.ViewModels;
 using Contracts.CoachWeb.ViewModels.Report;
@@ -14,24 +16,20 @@ namespace Application.CoachWeb.Services
             _repo = repo;
         }
 
-        public Task<List<DriverReportViewModel>> GetDriverReportAsync(int accountId)
+        public Task<List<DriverReportDTO>> GetDriverReportAsync(int accountId)
         {
             return _repo.GetReportByAccountIdAsync(accountId);
         }
 
-        public async Task<List<SessionDropdownViewModel>> GetSessionDropdownAsync(int driverId)
+        public async Task<DriverReportDTO?> GetSessionReportAsync(int sessionId)
         {
-            var sessions = await _repo.GetReportByAccountIdAsync(driverId);
-            return sessions.Select(s => new SessionDropdownViewModel
-            {
-                SessionID = s.SessionID,
-                DisplayText = $"{s.CircuitName} ({s.SessionDate:dd MMM yyyy})"
-            }).ToList();
+            var list = await _repo.GetReportBySessionIdAsync(sessionId);
+            return list.FirstOrDefault();
         }
-        public async Task<DriverReportViewModel?> GetSessionReportAsync(int sessionId)
+
+        public Task<List<DriverDropdownDTO>> GetAllDriversAsync()
         {
-            var sessions = await _repo.GetReportBySessionIdAsync(sessionId);
-            return sessions.FirstOrDefault();
+            return _repo.GetAllDriversAsync();
         }
     }
 }

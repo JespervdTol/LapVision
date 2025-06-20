@@ -1,10 +1,11 @@
-﻿using Contracts.CoachWeb.ViewModels.Report;
+﻿using Contracts.CoachWeb.DTO;
 
 namespace Contracts.CoachWeb.Interfaces.Repositories
 {
     public interface IReportRepository
     {
-        Task<List<DriverReportViewModel>> GetReportByAccountIdAsync(int accountId);
-        Task<List<DriverReportViewModel>> GetReportBySessionIdAsync(int sessionId);
+        Task<List<DriverReportDTO>> GetReportByAccountIdAsync(int accountId);
+        Task<List<DriverReportDTO>> GetReportBySessionIdAsync(int sessionId);
+        Task<List<DriverDropdownDTO>> GetAllDriversAsync();
     }
 }

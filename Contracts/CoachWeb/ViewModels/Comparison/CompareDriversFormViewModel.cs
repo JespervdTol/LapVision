@@ -12,7 +12,10 @@ namespace Contracts.CoachWeb.ViewModels.Comparison
         public List<DriverDropdownViewModel> AllDrivers { get; set; } = new();
         public List<SessionDropdownViewModel> Driver1Sessions { get; set; } = new();
         public List<SessionDropdownViewModel> Driver2Sessions { get; set; } = new();
-        public List<string> AvailableComparisons { get; set; } = new();
+
+        public List<StrategyOptionViewModel> StrategyOptions { get; set; } = new();
+
+        public List<string> SelectedComparisonIds { get; set; } = new();
 
         public DriverComparisonViewModel? Result { get; set; }
         public string? ErrorMessage { get; set; }

@@ -1,35 +1,41 @@
-﻿using Contracts.CoachWeb.Interfaces.Services;
-using Contracts.CoachWeb.ViewModels.Comparison;
-using Contracts.CoachWeb.ViewModels.Report;
+﻿using Contracts.CoachWeb.DTO;
+using Contracts.CoachWeb.Interfaces.Services;
 
 namespace Application.CoachWeb.Strategies
 {
-    public class DriverComparisonStrategy_FastestLapTime : IDriverComparisonService
+    public class DriverComparisonStrategy_FastestLapTime : IDriverComparisonCoordinator
     {
         public string Name => "Fastest Lap Time";
 
-        public ComparisonResultViewModel Compare(
-            DriverReportViewModel driver1, string driver1Name,
-            DriverReportViewModel driver2, string driver2Name)
+        public ComparisonResultDTO Compare(
+            DriverReportDTO driver1, string driver1Name,
+            DriverReportDTO driver2, string driver2Name)
         {
-            var d1Fastest = driver1.Heats
-                .SelectMany(h => h.Laps)
-                .Where(l => l.TotalTime.HasValue)
-                .Min(l => l.TotalTime!.Value.TotalMilliseconds);
+            var laps1 = driver1.Heats.SelectMany(h => h.Laps).ToList();
+            var laps2 = driver2.Heats.SelectMany(h => h.Laps).ToList();
 
-            var d2Fastest = driver2.Heats
-                .SelectMany(h => h.Laps)
-                .Where(l => l.TotalTime.HasValue)
-                .Min(l => l.TotalTime!.Value.TotalMilliseconds);
+            var has1 = laps1.Any();
+            var has2 = laps2.Any();
 
-            string winner = d1Fastest == d2Fastest ? "Tie"
-                : d1Fastest < d2Fastest ? driver1Name : driver2Name;
+            string driver1Value = has1 ? FormatTime(laps1.Min(l => l.LapTime.TotalMilliseconds)) : "N/A";
+            string driver2Value = has2 ? FormatTime(laps2.Min(l => l.LapTime.TotalMilliseconds)) : "N/A";
 
-            return new ComparisonResultViewModel
+            string winner = "N/A";
+
+            if (has1 && has2)
             {
-                MetricName = "Fastest Lap Time",
-                Driver1Value = FormatTime(d1Fastest),
-                Driver2Value = FormatTime(d2Fastest),
+                var min1 = laps1.Min(l => l.LapTime.TotalMilliseconds);
+                var min2 = laps2.Min(l => l.LapTime.TotalMilliseconds);
+
+                winner = min1 == min2 ? "Equal" :
+                         min1 < min2 ? driver1Name : driver2Name;
+            }
+
+            return new ComparisonResultDTO
+            {
+                MetricName = Name,
+                Driver1Value = driver1Value,
+                Driver2Value = driver2Value,
                 Winner = winner
             };
         }
